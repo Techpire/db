@@ -10,11 +10,6 @@ import * as _ from 'lodash'
 export module Model {
     let modifierFunctions: any = {}
 
-    function isArray(obj: any | any[]) {
-        // a little 'future proofing' https://dmitripavlutin.com/is-array-javascript/
-        return (obj instanceof Array || Object.prototype.toString.call(obj) === "[object Array]" || Array.isArray(obj))
-    }
-
     /**
      * Check a key, throw an error if the key is non valid
      * @param {String} k key
@@ -44,7 +39,7 @@ export module Model {
      */
     export function checkObject(obj: any): any {
         // a little 'future proofing' https://dmitripavlutin.com/is-array-javascript/
-        if(isArray(obj)) {
+        if(_.isArray(obj)) {
             obj.forEach(function(o: any) {
                 checkObject(o)
             })
@@ -115,7 +110,7 @@ export module Model {
             return obj
         }
 
-        if(isArray(obj)) {
+        if(_.isArray(obj)) {
             res = []
 
             obj.forEach(function(o: any) {
@@ -149,7 +144,7 @@ export module Model {
     export function isPrimitiveType(obj: any) {
         // TODO: revisit the ordering here for slight performance gain order from most likely to least likely
         return (typeof obj === 'boolean' || typeof obj === 'number' || typeof obj === 'string'
-            || obj === null || util.types.isDate(obj) || isArray(obj))
+            || obj === null || util.types.isDate(obj) || _.isArray(obj))
     }
 
     /**
@@ -216,8 +211,8 @@ export module Model {
         if(util.types.isDate(b)) { return util.types.isDate(a) ? compareNSB(a.getTime(), b.getTime()) : 1; }
 
         // Arrays (first element is most significant and so on)
-        if(isArray(a)) { return isArray(b) ? compareArrays(a, b) : -1 }
-        if(isArray(b)) { return isArray(a) ? compareArrays(a, b) : 1 }
+        if(_.isArray(a)) { return _.isArray(b) ? compareArrays(a, b) : -1 }
+        if(_.isArray(b)) { return _.isArray(a) ? compareArrays(a, b) : 1 }
 
         // Objects
         aKeys = Object.keys(a).sort()
@@ -248,7 +243,32 @@ export module Model {
          * Set a field to a new value
          */
         $set: function(obj: any, field: string, value: any): void {
-            _.set(obj, field, value)
+            let canSet = true
+
+            // NOTE: This may be flawed logic, but the unit tests work
+            if(field.indexOf('.') > -1) {
+                let path = ''
+                let val
+
+                for(let x of field.split('.').slice(0, -1)) {
+                    path += x
+                    val = getDotValue(obj, path)
+
+                    if(val == undefined) {
+                        canSet = true
+                        break
+                    } else if(typeof val == 'object' || _.isArray(val)) {
+                        canSet = true
+                    } else {
+                        canSet = false
+                    }
+
+                    path += '.'
+                }
+            }
+
+            if(canSet)
+                _.set(obj, field, value)
         },
 
         /**
@@ -266,19 +286,21 @@ export module Model {
          */
         $push: function(obj: any, field: string, value: any): void {
             // Create the array if it doesn't exist
-            if (!obj.hasOwnProperty(field)) { obj[field] = [] }
-            if (!isArray(obj[field])) { throw new Error("Can't $push an element on non-array values") }
+            if(!_.has(obj, field)) { _.set(obj, field, []) }
 
-            if (value !== null && typeof value === 'object' && value.$slice && value.$each === undefined) {
+            const arrayField = _.get(obj, field)
+            if(!_.isArray(arrayField)) { throw new Error("Can't $push an element on non-array values") }
+
+            if(value !== null && typeof value === 'object' && value.$slice && value.$each === undefined) {
                 value.$each = []
             }
 
-            if (value !== null && typeof value === 'object' && value.$each) {
-                if (Object.keys(value).length >= 3 || (Object.keys(value).length === 2 && value.$slice === undefined)) {
+            if(value !== null && typeof value === 'object' && value.$each) {
+                if(Object.keys(value).length >= 3 || (Object.keys(value).length === 2 && value.$slice === undefined)) {
                     throw new Error("Can only use $slice in cunjunction with $each when $push to array")
                 }
 
-                if (!isArray(value.$each)) {
+                if(!_.isArray(value.$each)) {
                     throw new Error("$each requires an array value")
                 }
 
@@ -286,14 +308,14 @@ export module Model {
                     obj[field].push(v)
                 })
 
-                if (value.$slice === undefined || typeof value.$slice !== 'number') { return }
+                if(value.$slice === undefined || typeof value.$slice !== 'number') { return }
 
-                if (value.$slice === 0) {
-                    obj[field] = []
+                if(value.$slice === 0) {
+                    _.set(obj, field, [])
                 } else {
-                    var start, end, n = obj[field].length
+                    var start, end, n = arrayField.length
 
-                    if (value.$slice < 0) {
+                    if(value.$slice < 0) {
                         start = Math.max(0, n + value.$slice)
                         end = n
                     } else if (value.$slice > 0) {
@@ -301,10 +323,10 @@ export module Model {
                         end = Math.min(n, value.$slice)
                     }
 
-                    obj[field] = obj[field].slice(start, end)
+                    _.set(obj, field, arrayField.slice(start, end))
                 }
             } else {
-                obj[field].push(value)
+                arrayField.push(value)
             }
         },
 
@@ -319,11 +341,11 @@ export module Model {
             // Create the array if it doesn't exist
             if (!obj.hasOwnProperty(field)) { obj[field] = [] }
 
-            if (!isArray(obj[field])) { throw new Error("Can't $addToSet an element on non-array values") }
+            if (!_.isArray(obj[field])) { throw new Error("Can't $addToSet an element on non-array values") }
 
             if (value !== null && typeof value === 'object' && value.$each) {
                 if (Object.keys(value).length > 1) { throw new Error("Can't use another field in conjunction with $each") }
-                if (!isArray(value.$each)) { throw new Error("$each requires an array value") }
+                if (!_.isArray(value.$each)) { throw new Error("$each requires an array value") }
 
                 value.$each.forEach(function (v: any | any[]) {
                     lastStepModifierFunctions.$addToSet(obj, field, v)
@@ -341,7 +363,7 @@ export module Model {
          * Remove the first or last element of an array
          */
         $pop: function(obj: any, field: string, value: any): void {
-            if (!isArray(obj[field])) { throw new Error("Can't $pop an element from non-array values") }
+            if (!_.isArray(obj[field])) { throw new Error("Can't $pop an element from non-array values") }
             if (typeof value !== 'number') { throw new Error(value + " isn't an integer, can't use it with $pop") }
             if (value === 0) { return }
 
@@ -356,7 +378,7 @@ export module Model {
          * Removes all instances of a value from an existing array
          */
         $pull(obj: any, field: string, value: any) {
-            if(!isArray(obj[field])) { throw new Error("Can't $pull an element from non-array values"); }
+            if(!_.isArray(obj[field])) { throw new Error("Can't $pull an element from non-array values"); }
 
             const arr = obj[field]
             for(let i = arr.length - 1; i >= 0; i -= 1) {
@@ -369,28 +391,24 @@ export module Model {
         /**
          * Increment a numeric field's value
          */
-        $inc: function(obj: any, field: string, value: any): void {
-            if (typeof value !== 'number') { throw new Error(value + " must be a number") }
+        $inc: function(obj: any, field: string, value: number): void {
+            if(typeof value !== 'number') { throw new Error(value + " must be a number") }
 
-            if (typeof obj[field] !== 'number') {
-                if (!_.has(obj, field)) {
-                    obj[field] = value
-                } else {
-                    throw new Error("Don't use the $inc modifier on non-number fields")
-                }
-            } else {
-                obj[field] += value
-            }
+            let val = getDotValue(obj, field)
+            if(val != null && typeof val !== 'number') { throw new Error("Don't use the $inc modifier on non-number fields") }
+
+            if(_.has(obj, field))
+                _.set(obj, field, val += value)
+            else
+                _.set(obj, field, value)
         },
 
         /**
          * Updates the value of the field, only if specified field is greater than the current value of the field
          */
         $max: function(obj: any, field: string, value: any): void {
-            if (typeof obj[field] === 'undefined') {
-                obj[field] = value
-            } else if (value > obj[field]) {
-                obj[field] = value
+            if(!_.has(obj, field) || value > _.get(obj, field)) {
+                _.set(obj, field, value)
             }
         },
 
@@ -398,7 +416,7 @@ export module Model {
          * Updates the value of the field, only if specified field is smaller than the current value of the field
          */
         $min: function(obj: any, field: string, value: any): void {
-            if (typeof obj[field] === 'undefined') {
+            if(typeof obj[field] === 'undefined') {
                 obj[field] = value
             } else if (value < obj[field]) {
                 obj[field] = value
@@ -466,14 +484,10 @@ export module Model {
 
                 keys = Object.keys(updateQuery[m])
                 keys.forEach(function(k) {
-                    // console.log("************ [" + keys + "]     " + m);
                     (lastStepModifierFunctions as any)[m](newDoc, k, updateQuery[m][k])
                 })
             })
         }
-
-        // console.log(updateQuery)
-        // console.log(newDoc)
 
         // Check result is valid and return it
         checkObject(newDoc)
@@ -491,7 +505,7 @@ export module Model {
      * @param {Object} obj
      * @param {String} field
      */
-    export function getDotValue(obj: any, field: any | any[]): any | any[] {
+    export function getDotValue(obj: any, field: any): any {
         const fieldParts = typeof field === 'string' ? field.split('.') : field
 
         if(!obj) { return undefined }   // field cannot be empty so that means we should return undefined so that nothing can match
@@ -500,7 +514,7 @@ export module Model {
 
         if(fieldParts.length === 1) { return obj[fieldParts[0]] }
 
-        if(isArray(obj[fieldParts[0]])) {
+        if(_.isArray(obj[fieldParts[0]])) {
             // If the next field is an integer, return only this item of the array
             let i = parseInt(fieldParts[1], 10)
             if(typeof i === 'number' && !isNaN(i)) {
@@ -539,7 +553,7 @@ export module Model {
 
         // Arrays (no match since arrays are used as a $in)
         // undefined (no match since they mean field doesn't exist and can't be serialized)
-        if((!(isArray(a) && isArray(b)) && (isArray(a) || isArray(b))) || a === undefined || b === undefined)
+        if((!(_.isArray(a) && _.isArray(b)) && (_.isArray(a) || _.isArray(b))) || a === undefined || b === undefined)
             return false
 
         // General objects (check for deep equality)
@@ -598,7 +612,7 @@ export module Model {
         }, $in(a: any, b: any) {
             var i
 
-            if(!isArray(b)) { throw new Error("$in operator called with a non-array") }
+            if(!_.isArray(b)) { throw new Error("$in operator called with a non-array") }
 
             for(i = 0; i < b.length; i += 1) {
                 if(areThingsEqual(a, b[i])) { return true }
@@ -606,7 +620,7 @@ export module Model {
 
             return false
         }, $nin(a: any, b: any) {
-            if (!isArray(b)) { throw new Error("$nin operator called with a non-array"); }
+            if (!_.isArray(b)) { throw new Error("$nin operator called with a non-array"); }
 
             return !comparisonFunctions.$in(a, b) // TODO: this.$in?
         }, $regex(a: any, b: any) {
@@ -630,13 +644,13 @@ export module Model {
                 return exists
             }
         }, $size(obj: any, value: any) { // Specific to arrays
-            if(!isArray(obj)) { return false }
+            if(!_.isArray(obj)) { return false }
             if(value % 1 !== 0) { throw new Error("$size operator called without an integer") }
 
             return (obj.length == value)
         }
         , $elemMatch(obj: any, value: any) {
-            if(!isArray(obj)) { return false; }
+            if(!_.isArray(obj)) { return false; }
             let  i = obj.length
             let result = false;   // Initialize result
 
@@ -663,7 +677,7 @@ export module Model {
      */
     const logicalOperators = {
         $or: function(obj: any, query: any) {
-            if (!isArray(query)) { throw new Error("$or operator used without an array"); }
+            if (!_.isArray(query)) { throw new Error("$or operator used without an array"); }
 
             for(let i = 0; i < query.length; i += 1) {
                 if(match(obj, query[i])) { return true; }
@@ -678,7 +692,7 @@ export module Model {
          * @param {Array of Queries} query
          */
         $and: function(obj: any, query: any) {
-            if (!isArray(query)) { throw new Error("$and operator used without an array"); }
+            if (!_.isArray(query)) { throw new Error("$and operator used without an array"); }
 
             for (let i = 0; i < query.length; i += 1) {
                 if(!match(obj, query[i]))
@@ -753,9 +767,9 @@ export module Model {
         const objValue = getDotValue(obj, queryKey)
 
         // Check if the value is an array if we don't force a treatment as value
-        if(isArray(objValue) && !treatObjAsValue) {
+        if(_.isArray(objValue) && !treatObjAsValue) {
             // If the queryValue is an array, try to perform an exact match
-            if(isArray(queryValue)) {
+            if(_.isArray(queryValue)) {
                 return matchQueryPart(obj, queryKey, queryValue, true)
             }
 
@@ -778,7 +792,7 @@ export module Model {
 
         // queryValue is an actual object. Determine whether it contains comparison operators
         // or only normal fields. Mixed objects are not allowed
-        if(queryValue !== null && typeof queryValue === 'object' && !util.types.isRegExp(queryValue) && !isArray(queryValue)) {
+        if(queryValue !== null && typeof queryValue === 'object' && !util.types.isRegExp(queryValue) && !_.isArray(queryValue)) {
             const keys = Object.keys(queryValue)
             const firstChars = _.map(keys, function (item) { return item[0]; })
             const dollarFirstChars = _.filter(firstChars, function (c) { return c === '$'; })

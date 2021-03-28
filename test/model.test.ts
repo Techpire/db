@@ -29,7 +29,6 @@ describe('Model', function() {
             assert.notEqual(-1, c.test.indexOf('\n'))
         })
 
-
         it('Can serialize and deserialize booleans', function() {
             const a = { test: true }
             const b = Model.serialize(a)
@@ -358,7 +357,7 @@ describe('Model', function() {
                 assert.deepEqual({ yup: { subfield: 'changed', yop: 'yes indeed' }, totally: { doesnt: { exist: 'now it does' } } }, modified)
             })
 
-            /* ???
+            // ???
             it("Doesn't replace a falsy field by an object when recursively following dot notation", function() {
                 const obj = { nested: false }
                 const updateQuery = { $set: { "nested.now": 'it is' } }
@@ -366,7 +365,6 @@ describe('Model', function() {
 
                 assert.deepEqual({ nested: false }, modified);   // Object not modified as the nested field doesn't exist
             })
-            */
         })
 
         describe('$unset modifier', function () {
@@ -420,19 +418,18 @@ describe('Model', function() {
         })
 
         describe('$inc modifier', function () {
-/*
             it('Throw an error if you try to use it with a non-number or on a non number field', function() {
                 let obj: any = { some: 'thing', yup: 'yes', nay: 2 }
                 let updateQuery = { $inc: { nay: 'notanumber' } }
 
-                expect(Model.modify(obj, updateQuery)).to.throw()
+                expect(() => Model.modify(obj, updateQuery)).to.throw()
 
                 obj = { some: 'thing', yup: 'yes', nay: 'nope' }
                 updateQuery = ({ $inc: { nay: 1 } } as any)
 
-                expect(Model.modify(obj, updateQuery)).to.throw()
+                expect(() => Model.modify(obj, updateQuery)).to.throw()
             })
-*/
+
             it('Can increment number fields or create and initialize them if needed', function() {
                 const obj = { some: 'thing', nay: 40 }
                 let modified = Model.modify(obj, { $inc: { nay: 2 } })
@@ -443,14 +440,12 @@ describe('Model', function() {
                 assert.deepEqual({ some: 'thing', nay: 40, inexistent: -6 }, modified)
             })
 
-/*
             it('Works recursively', function() {
                 const obj = { some: 'thing', nay: { nope: 40 } }
                 const modified = Model.modify(obj, { $inc: { "nay.nope": -2, "blip.blop": 123 } })
 
-                assert.equal({ some: 'thing', nay: { nope: 38 }, blip: { blop: 123 } }, modified)
+                assert.deepEqual({ some: 'thing', nay: { nope: 38 }, blip: { blop: 123 } }, modified)
             })
-*/
         });
 
         describe('$push modifier', function() {
@@ -468,7 +463,6 @@ describe('Model', function() {
                 assert.deepEqual(modified, { arr: ['world'] })
             })
 
-/*
             it('Can push on nested fields', function() {
                 let obj: any = { arr: { nested: ['hello'] } }
                 let modified = Model.modify(obj, { $push: { "arr.nested": 'world' } })
@@ -478,7 +472,7 @@ describe('Model', function() {
                 modified = Model.modify(obj, { $push: { "arr.nested": 'world' } })
                 assert.deepEqual(modified, { arr: { a: 2, nested: ['world'] } })
             })
-*/
+
             it('Throw if we try to push to a non-array', function() {
                 let obj: any = { arr: 'hello' }
                 expect(() => Model.modify(obj, { $push: { arr: 'world' } })).to.throw()
@@ -708,15 +702,13 @@ describe('Model', function() {
                 assert.deepEqual({ some: 'thing', number: 10 }, modified)
             })
 
-            /*
             it('Works on embedded documents', function() {
                 const obj = { some: 'thing', somethingElse: { number: 10 } }
                 const updateQuery = { $max: { 'somethingElse.number': 12 } }
                 const modified = Model.modify(obj, updateQuery)
 
-                assert.equal({ some: 'thing', somethingElse: { number: 12 } }, modified)
+                assert.deepEqual({ some: 'thing', somethingElse: { number: 12 } }, modified)
             })
-            */
         })
 
         describe('$min modifier', function() {
