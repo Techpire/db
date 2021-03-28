@@ -736,7 +736,7 @@ describe('Model', function() {
 
                 assert.deepEqual({ some: 'thing', number: 10 }, modified)
             })
-/*
+
             it('Works on embedded documents', function() {
                 const obj = { some: 'thing', somethingElse: { number: 10 } }
                 const updateQuery = { $min: { 'somethingElse.number': 8 } }
@@ -744,7 +744,6 @@ describe('Model', function() {
 
                 assert.deepEqual({ some: 'thing', somethingElse: { number: 8 } }, modified)
             })
-*/
         })
     })
 
@@ -1196,16 +1195,16 @@ describe('Model', function() {
                 assert.equal(false, Model.match({ a: 5 }, { a: { $size: 1 } }))
             })
 
-/*
+/* NOTE: Typescript doesn't play nice with duplicate keys, JSON.parse doesn't play nice with $size
             it('Can use $size several times in the same matcher', function () {
                 // Note: hack to get around Typescript strict mode
-                const test1 = JSON.stringify("{ \"childrens\": { $size: 3, $size: 3 } }")
-                const test2 = JSON.stringify("{ \"childrens\": { $size: 3, $size: 4 } }")
+                const test1 = JSON.parse("{ \"childrens\": { $size: 3, $size: 3 } }")
+                const test2 = JSON.parse("{ \"childrens\": { $size: 3, $size: 4 } }")
 
                 assert.equal(true, Model.match({ childrens: ['Riri', 'Fifi', 'Loulou'] }, test1))
                 assert.equal(false, Model.match({ childrens: ['Riri', 'Fifi', 'Loulou'] }, test2))   // Of course this can never be true
             })
-*/
+ */
 
             it('Can query array documents with multiple simultaneous conditions', function() {
                 // Non nested documents
@@ -1264,7 +1263,7 @@ describe('Model', function() {
                 assert.equal(true, Model.match({ a: 5, b: 7, c: 12 }, { $or: [{ $and: [{ a: 5 }, { b: 8 }] }, { $and: [{ a: 5 }, { c: { $lt: 40 } }] }] }))
                 assert.equal(false, Model.match({ a: 5, b: 7, c: 12 }, { $or: [{ $and: [{ a: 5 }, { b: 8 }] }, { $and: [{ a: 5 }, { c: { $lt: 10 } }] }] }))
             })
-/*
+/* NOTE: Typescript doesn't play nice with duplicate keys, JSON.parse doesn't play nice with $size
             it('Should throw an error if a logical operator is used without an array or if an unknown logical operator is used', function () {
                 // Note: hack to get around Typescript strict mode
                 const test1 = JSON.parse("{ $or: { a: 5, a: 6 } }")
@@ -1311,9 +1310,11 @@ describe('Model', function() {
                 assert.equal(false, Model.match({ tags: ['node', 'js', 'db'] }, { tagss: 'js' }))
                 assert.equal(true, Model.match({ tags: ['node', 'js', 'db'] }, { tags: 'js' }))
 
-                //const test1MatchA = JSON.parse("{ tags: ['node', 'js', 'db'] }")
-                //const test1MatchB = JSON.parse("{ tags: 'js', tags: 'node' }")
-                //assert.equal(true, Model.match(test1MatchA, test1MatchB))
+                /*
+                const test1MatchA = { tags: ['node', 'js', 'db'] }
+                const test1MatchB = JSON.parse("{ tags: 'js', tags: 'node' }")
+                assert.equal(true, Model.match(test1MatchA, test1MatchB))
+                */
 
                 // Mixed matching with array and non array
                 assert.equal(true, Model.match({ tags: ['node', 'js', 'db'], nedb: true }, { tags: 'js', nedb: true }))

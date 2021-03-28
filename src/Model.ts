@@ -108,9 +108,7 @@ export module Model {
                 || obj === null
                 || (util.types.isDate(obj))) {
             return obj
-        }
-
-        if(_.isArray(obj)) {
+        } else if(_.isArray(obj)) {
             res = []
 
             obj.forEach(function(o: any) {
@@ -118,9 +116,7 @@ export module Model {
             })
 
             return res
-        }
-
-        if(typeof obj === 'object') {
+        } else if(typeof obj === 'object') {
             res = {}
 
             Object.keys(obj).forEach(function (k) {
@@ -182,37 +178,37 @@ export module Model {
      *
      * @param {Function} compareStrings String comparing function, returning -1, 0 or 1, overriding default string comparison (useful for languages with accented letters)
      */
-    export function compareThings(a: any | Array<any>, b: any | Array<any>, compareStrings?: Function): number {
+    export function compareThings(a: any, b: any, compareStrings?: Function): number {
         let aKeys, bKeys, comp, i
         compareStrings = compareStrings ?? compareNSB
 
         // undefined
         if(a === undefined) { return b === undefined ? 0 : -1 }
-        if(b === undefined) { return a === undefined ? 0 : 1 }
+        else if(b === undefined) { return a === undefined ? 0 : 1 }
 
         // null
-        if(a === null) { return b === null ? 0 : -1 }
-        if(b === null) { return a === null ? 0 : 1 }
+        else if(a === null) { return b === null ? 0 : -1 }
+        else if(b === null) { return a === null ? 0 : 1 }
 
         // Numbers
-        if(typeof a === 'number') { return typeof b === 'number' ? compareNSB(a, b) : -1 }
-        if(typeof b === 'number') { return typeof a === 'number' ? compareNSB(a, b) : 1 }
+        else if(typeof a === 'number') { return typeof b === 'number' ? compareNSB(a, b) : -1 }
+        else if(typeof b === 'number') { return typeof a === 'number' ? compareNSB(a, b) : 1 }
 
         // Strings
-        if(typeof a === 'string') { return typeof b === 'string' ? compareStrings(a, b) : -1; }
-        if(typeof b === 'string') { return typeof a === 'string' ? compareStrings(a, b) : 1; }
+        else if(typeof a === 'string') { return typeof b === 'string' ? compareStrings(a, b) : -1; }
+        else if(typeof b === 'string') { return typeof a === 'string' ? compareStrings(a, b) : 1; }
 
         // Booleans
-        if(typeof a === 'boolean') { return typeof b === 'boolean' ? compareNSB(a, b) : -1; }
-        if(typeof b === 'boolean') { return typeof a === 'boolean' ? compareNSB(a, b) : 1; }
+        else if(typeof a === 'boolean') { return typeof b === 'boolean' ? compareNSB(a, b) : -1; }
+        else if(typeof b === 'boolean') { return typeof a === 'boolean' ? compareNSB(a, b) : 1; }
 
         // Dates
-        if(util.types.isDate(a)) { return util.types.isDate(b) ? compareNSB(a.getTime(), b.getTime()) : -1; }
-        if(util.types.isDate(b)) { return util.types.isDate(a) ? compareNSB(a.getTime(), b.getTime()) : 1; }
+        else if(util.types.isDate(a)) { return util.types.isDate(b) ? compareNSB(a.getTime(), b.getTime()) : -1; }
+        else if(util.types.isDate(b)) { return util.types.isDate(a) ? compareNSB(a.getTime(), b.getTime()) : 1; }
 
         // Arrays (first element is most significant and so on)
-        if(_.isArray(a)) { return _.isArray(b) ? compareArrays(a, b) : -1 }
-        if(_.isArray(b)) { return _.isArray(a) ? compareArrays(a, b) : 1 }
+        else if(_.isArray(a)) { return _.isArray(b) ? compareArrays(a, b) : -1 }
+        else if(_.isArray(b)) { return _.isArray(a) ? compareArrays(a, b) : 1 }
 
         // Objects
         aKeys = Object.keys(a).sort()
@@ -252,7 +248,7 @@ export module Model {
 
                 for(let x of field.split('.').slice(0, -1)) {
                     path += x
-                    val = getDotValue(obj, path)
+                    val = _.get(obj, path)
 
                     if(val == undefined) {
                         canSet = true
@@ -339,23 +335,23 @@ export module Model {
             var addToSet = true
 
             // Create the array if it doesn't exist
-            if (!obj.hasOwnProperty(field)) { obj[field] = [] }
+            if(!obj.hasOwnProperty(field)) { obj[field] = [] }
 
-            if (!_.isArray(obj[field])) { throw new Error("Can't $addToSet an element on non-array values") }
+            if(!_.isArray(obj[field])) { throw new Error("Can't $addToSet an element on non-array values") }
 
-            if (value !== null && typeof value === 'object' && value.$each) {
-                if (Object.keys(value).length > 1) { throw new Error("Can't use another field in conjunction with $each") }
-                if (!_.isArray(value.$each)) { throw new Error("$each requires an array value") }
+            if(value !== null && typeof value === 'object' && value.$each) {
+                if(Object.keys(value).length > 1) { throw new Error("Can't use another field in conjunction with $each") }
+                if(!_.isArray(value.$each)) { throw new Error("$each requires an array value") }
 
                 value.$each.forEach(function (v: any | any[]) {
                     lastStepModifierFunctions.$addToSet(obj, field, v)
                 })
             } else {
                 obj[field].forEach(function (v: any | any[]) {
-                    if (compareThings(v, value) === 0) { addToSet = false; }
+                    if(compareThings(v, value) === 0) { addToSet = false; }
                 })
 
-                if (addToSet) { obj[field].push(value) }
+                if(addToSet) { obj[field].push(value) }
             }
         },
 
@@ -394,7 +390,7 @@ export module Model {
         $inc: function(obj: any, field: string, value: number): void {
             if(typeof value !== 'number') { throw new Error(value + " must be a number") }
 
-            let val = getDotValue(obj, field)
+            let val = _.get(obj, field)
             if(val != null && typeof val !== 'number') { throw new Error("Don't use the $inc modifier on non-number fields") }
 
             if(_.has(obj, field))
@@ -407,20 +403,16 @@ export module Model {
          * Updates the value of the field, only if specified field is greater than the current value of the field
          */
         $max: function(obj: any, field: string, value: any): void {
-            if(!_.has(obj, field) || value > _.get(obj, field)) {
+            if(!_.has(obj, field) || value > _.get(obj, field))
                 _.set(obj, field, value)
-            }
         },
 
         /**
          * Updates the value of the field, only if specified field is smaller than the current value of the field
          */
         $min: function(obj: any, field: string, value: any): void {
-            if(typeof obj[field] === 'undefined') {
-                obj[field] = value
-            } else if (value < obj[field]) {
-                obj[field] = value
-            }
+            if(!_.has(obj, field) || value < _.get(obj, field))
+                _.set(obj, field, value)
         }
     } as const
 
@@ -501,6 +493,7 @@ export module Model {
     // Finding documents
     // ==============================================================
     /**
+     * @deprecated - After clearing matchQueryPart of the reference to this, it will be removed.
      * Get a value from object with dot notation
      * @param {Object} obj
      * @param {String} field
@@ -650,9 +643,9 @@ export module Model {
             return (obj.length == value)
         }
         , $elemMatch(obj: any, value: any) {
-            if(!_.isArray(obj)) { return false; }
+            if(!_.isArray(obj)) { return false }
             let  i = obj.length
-            let result = false;   // Initialize result
+            let result = false   // Initialize result
 
             while(i--) {
                 if (match(obj[i], value)) {   // If match for array element, return true
@@ -757,7 +750,6 @@ export module Model {
 
         return true
     }
-
 
     /**
      * Match an object against a specific { key: value } part of a query
