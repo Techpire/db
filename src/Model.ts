@@ -1,5 +1,5 @@
-import util from 'util'
 import * as _ from 'lodash'
+import util from 'util'
 
 /**
  * Handle models (i.e. docs)
