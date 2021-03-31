@@ -1,19 +1,13 @@
-/*
-var BinarySearchTree = require('binary-search-tree').AVLTree
-  , model = require('./model')
-  , _ = require('underscore')
-  , util = require('util')
-*/
+// , util = require('util')
 
 //import { AvlTree } from '@datastructures-js/binary-search-tree'
 import { BinarySearchTree } from '@datastructures-js/binary-search-tree'
 import _ from 'lodash'
-import { Model } from './model'
+import { Model } from './Model'
 
 export class Indexer {
     private _fieldName: string
     private _isUniqueKeys: boolean
-    private _isAllowSparse: boolean
     private _tree: any
 
     /**
@@ -27,7 +21,6 @@ export class Indexer {
     constructor(fieldName: string, unique: boolean = false, sparseIndexes: boolean = false) {
         this._fieldName = fieldName
         this._isUniqueKeys = unique || false
-        this._isAllowSparse = sparseIndexes || false
         this._tree = new BinarySearchTree()
 
         this.reset()   // No data in the beginning
@@ -95,7 +88,7 @@ export class Indexer {
         const key = Model.getDotValue(doc, this._fieldName)
 
         // We don't index documents that don't contain the field if the index is sparse
-        if(key == null && this._isAllowSparse) { return }
+        if(key == null) { throw new Error("Key cannot be null or undefined") }
         if(_.isArray(key)) { throw new Error("Cannot use an array for an index") }
         if(this._isUniqueKeys && this._tree.has(key))
             throw new Error("Cannot insert key " + key + ", it violates the unique constraint")
@@ -127,7 +120,7 @@ export class Indexer {
             key = doc
         }
 
-        if(key == null && this._isAllowSparse) { return }
+        //if(key == null) { return }
         if(this._tree.has(key)) {
             this._tree.remove(key)
         }
@@ -224,16 +217,21 @@ export class Indexer {
         return this._tree.find(key)?.getValue()
     }
 
-    /*
-    public getMatching(key: any): any[] {
-        const res: any = []
 
-        if(!_.isArray(key)) {
-            res.push(this._tree.find(key)?.getValue())
-            return res
-        } else {
-            console.log('ARRAYYYYYYYY')
-        }
+    public getMatching(key: any): any[] {
+        //if(!_.isArray(key)) {
+        //    var test = (key as Array<any>).map(element => {
+        //        this._tree.find(element)?.getValue()
+        //    })
+        //
+        //    console.log(test)
+        //
+        //    return test
+        //} else {
+            var retVal = this._tree.find(key)?.getValue()
+            return retVal ? [retVal ] : []
+        //}
+
         /*else {
             let _res = {}
 
@@ -250,7 +248,7 @@ export class Indexer {
 
             return res
         }
-        *
+        */
     }
 
     /**

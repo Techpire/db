@@ -7,6 +7,7 @@ import util from 'util'
  * Copying
  * Querying, update
  */
+// TODO: Make this a class
 export module Model {
     let modifierFunctions: any = {}
 
@@ -493,7 +494,7 @@ export module Model {
     // Finding documents
     // ==============================================================
     /**
-     * @deprecated - After clearing matchQueryPart of the reference to this, it will be removed.
+     * TODO: deprecate - After clearing matchQueryPart of the reference to this, it should be removed or moved to its own utility class.
      * Get a value from object with dot notation
      * @param {Object} obj
      * @param {String} field

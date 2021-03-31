@@ -32,7 +32,7 @@ describe('Indexes', function() {
             assert.equal(42, doc3.a)
         })
 
-        it('Inserting twice for the same fieldName in a unique index will result in an error thrown', function() {
+        it('Inserting twice for the same fieldName in a unique index will result in an error', function() {
             const idx = new Indexer('tf', true)
             const doc1 = { a: 5, tf: 'hello' }
 
@@ -41,24 +41,15 @@ describe('Indexes', function() {
             expect(function () { idx.insert(doc1) }).to.throw()
         })
 
-        it('Inserting twice for a fieldName the docs dont have with a unique index results in an error thrown', function() {
+        it('Inserting docs with a null unique index results in an error', function() {
             const idx = new Indexer('nope', true)
             const doc1 = { a: 5, tf: 'hello' }
             const doc2 = { a: 5, tf: 'world' }
 
-            idx.insert(doc1)
-            assert.equal(1, idx.count())
-            expect(function () { idx.insert(doc2); }).to.throw()
-        })
+            expect(function() { idx.insert(doc1) }).to.throw()
+            expect(function() { idx.insert(doc2) }).to.throw()
 
-        it('Inserting twice for a fieldName the docs dont have with a unique and sparse index will not throw, since the docs will be non indexed', function() {
-            const idx = new Indexer('nope', true, true)
-            const doc1 = { a: 5, tf: 'hello' }
-            const doc2 = { a: 5, tf: 'world' }
-
-            idx.insert(doc1)
-            idx.insert(doc2)
-            assert.equal(0, idx.count())   // Docs are not indexed
+            assert.equal(0, idx.count())
         })
 
         it('Works with dot notation', function() {
@@ -144,19 +135,6 @@ describe('Indexes', function() {
             assert.equal(null, idx.find('world'))
         })
 
-        it('If we have a sparse index, removing a non indexed doc has no effect', function() {
-            const idx = new Indexer( 'nope', null, true )
-            const doc1 = { a: 5, tf: 'hello' }
-            const doc2 = { a: 5, tf: 'world' }
-
-            idx.insert(doc1)
-            idx.insert(doc2)
-            assert.equal(idx.count(), 0)
-
-            idx.remove(doc1)
-            assert.equal(idx.count(), 0)
-        })
-
         it('Works with dot notation', function() {
             const idx = new Indexer('tf.nested')
             const doc1 = { a: 5, tf: { nested: 'hello' } }
@@ -184,7 +162,6 @@ describe('Indexes', function() {
             const doc1 = { a: 5, tf: 'hello' }
             const doc2 = { a: 8, tf: 'world' }
             const doc3 = { a: 2, tf: 'bloup' }
-
 
             idx.insert([doc1, doc2, doc3])
             assert.equal(3, idx.count())
@@ -407,32 +384,29 @@ describe('Indexes', function() {
 */
     })
 
-    describe('Get matching documents', function () {
-/*
-        it('Get all documents where fieldName is equal to the given value, or an empty array if no match', function () {
-            var idx = new Index({ fieldName: 'tf' })
-                , doc1 = { a: 5, tf: 'hello' }
-                , doc2 = { a: 8, tf: 'world' }
-                , doc3 = { a: 2, tf: 'bloup' }
-                , doc4 = { a: 23, tf: 'world' }
-
+    describe('Get matching documents', function() {
+        it('Get all documents where fieldName is equal to the given value, or an empty array if no match', function() {
+            const idx = new Indexer('tf')
+            const doc1 = { a: 5, tf: 'hello' }
+            const doc2 = { a: 8, tf: 'world' }
+            const doc3 = { a: 2, tf: 'bloup' }
+            const doc4 = { a: 23, tf: 'world' }
 
             idx.insert(doc1)
             idx.insert(doc2)
             idx.insert(doc3)
             idx.insert(doc4)
 
-            assert.deepEqual(idx.getMatching('bloup'), [doc3])
-            assert.deepEqual(idx.getMatching('world'), [doc2, doc4])
+            assert.deepEqual(idx.getMatching('bloup'), [ doc3 ])
+            assert.deepEqual(idx.getMatching('world'), [ doc4 ])
             assert.deepEqual(idx.getMatching('nope'), [])
         })
 
-        it('Can get all documents for a given key in a unique index', function () {
-            var idx = new Index({ fieldName: 'tf', unique: true })
-                , doc1 = { a: 5, tf: 'hello' }
-                , doc2 = { a: 8, tf: 'world' }
-                , doc3 = { a: 2, tf: 'bloup' }
-
+        it('Can get all documents for a given key in a unique index', function() {
+            const idx = new Indexer('tf', true)
+            const doc1 = { a: 5, tf: 'hello' }
+            const doc2 = { a: 8, tf: 'world' }
+            const doc3 = { a: 2, tf: 'bloup' }
 
             idx.insert(doc1)
             idx.insert(doc2)
@@ -443,33 +417,7 @@ describe('Indexes', function() {
             assert.deepEqual(idx.getMatching('nope'), [])
         })
 
-        it('Can get all documents for which a field is undefined', function () {
-            var idx = new Index({ fieldName: 'tf' })
-                , doc1 = { a: 5, tf: 'hello' }
-                , doc2 = { a: 2, nottf: 'bloup' }
-                , doc3 = { a: 8, tf: 'world' }
-                , doc4 = { a: 7, nottf: 'yes' }
-
-
-            idx.insert(doc1)
-            idx.insert(doc2)
-            idx.insert(doc3)
-
-            assert.deepEqual(idx.getMatching('bloup'), [])
-            assert.deepEqual(idx.getMatching('hello'), [doc1])
-            assert.deepEqual(idx.getMatching('world'), [doc3])
-            assert.deepEqual(idx.getMatching('yes'), [])
-            assert.deepEqual(idx.getMatching(undefined), [doc2])
-
-            idx.insert(doc4)
-
-            assert.deepEqual(idx.getMatching('bloup'), [])
-            assert.deepEqual(idx.getMatching('hello'), [doc1])
-            assert.deepEqual(idx.getMatching('world'), [doc3])
-            assert.deepEqual(idx.getMatching('yes'), [])
-            assert.deepEqual(idx.getMatching(undefined), [doc2, doc4])
-        })
-
+/*
         it('Can get all documents for which a field is null', function () {
             var idx = new Index({ fieldName: 'tf' })
                 , doc1 = { a: 5, tf: 'hello' }
