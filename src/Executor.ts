@@ -1,4 +1,3 @@
-/* Note, this should be converted, but tests require too many other non-converted classes.
 import async from 'async'
 
 export class Executor {
@@ -52,4 +51,3 @@ export class Executor {
         this.buffer = []
     }
 }
-*/

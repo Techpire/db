@@ -1,7 +1,7 @@
 // , util = require('util')
 
-//import { AvlTree } from '@datastructures-js/binary-search-tree'
-import { BinarySearchTree } from '@datastructures-js/binary-search-tree'
+import { AvlTree } from '@datastructures-js/binary-search-tree'
+//import { BinarySearchTree } from '@datastructures-js/binary-search-tree'
 import _ from 'lodash'
 import { Model } from './Model'
 
@@ -18,10 +18,11 @@ export class Indexer {
      * @param {Boolean} unique Optional, enforce a unique constraint (default: false)
      * @param {Boolean} sparse Optional, allow a sparse index (we can have documents for which fieldName is undefined) (default: false)
      */
-    constructor(fieldName: string, unique: boolean = false, sparseIndexes: boolean = false) {
+    constructor(fieldName: string, unique: boolean = false) {
         this._fieldName = fieldName
         this._isUniqueKeys = unique || false
-        this._tree = new BinarySearchTree()
+        //this._tree = new BinarySearchTree()
+        this._tree = new AvlTree()
 
         this.reset()   // No data in the beginning
     }
@@ -45,16 +46,17 @@ export class Indexer {
 
     /**
      * Get all elements in the index
+     * @param {boolean} isFullTree For amusement.  This will return all the details of each node not really needed beyond testing purposes
      * @return {Array of documents}
      */
     public getAll(isFullTree: boolean = false) {
         const res: any[] = []
 
         this._tree.traverseInOrder(function(node: any) {
-            if(isFullTree)
-                res.push(node)
-            else
+            if(!isFullTree)
                 res.push(node.getValue())
+            else
+                res.push(node)
         })
 
         return res
@@ -89,6 +91,8 @@ export class Indexer {
 
         // We don't index documents that don't contain the field if the index is sparse
         if(key == null) { throw new Error("Key cannot be null or undefined") }
+
+        // TODO: Not checking the key for primitive types would technically allow for objects as keys.
         if(_.isArray(key)) { throw new Error("Cannot use an array for an index") }
         if(this._isUniqueKeys && this._tree.has(key))
             throw new Error("Cannot insert key " + key + ", it violates the unique constraint")
@@ -131,18 +135,20 @@ export class Indexer {
      * Update a document in the index
      * If a constraint is violated, changes are rolled back and an error thrown
      * Naive implementation, still in O(log(n))
-     *
+     */
     public update(oldDoc: any, newDoc?: any) {
+        /*
         if(_.isArray(oldDoc)) {
             this.updateMultipleDocs([oldDoc])
             return
         }
+        */
 
         this.remove(oldDoc)
 
         try {
             this.insert(newDoc)
-        } catch (e) {
+        } catch(e) {
             this.insert(oldDoc)
             throw e
         }
@@ -213,42 +219,19 @@ export class Indexer {
      * @param {Thing} key Value to match the key against
      * @return {Array of documents}
      */
-    public find(key: any): any {
+    public find(key: object | string | number | boolean): any {
         return this._tree.find(key)?.getValue()
     }
 
+    public findAll(key: any[]) : any {
+        let res = []
 
-    public getMatching(key: any): any[] {
-        //if(!_.isArray(key)) {
-        //    var test = (key as Array<any>).map(element => {
-        //        this._tree.find(element)?.getValue()
-        //    })
-        //
-        //    console.log(test)
-        //
-        //    return test
-        //} else {
-            var retVal = this._tree.find(key)?.getValue()
-            return retVal ? [retVal ] : []
-        //}
-
-        /*else {
-            let _res = {}
-
-            key.forEach(function(k): void {
-                console.log(k)
-                this.getMatching(k).forEach(function(doc: any) {
-                    _res[doc._id] = doc
-                })
-            })
-
-            Object.keys(_res).forEach(function(_id) {
-                res.push(_res[_id])
-            })
-
-            return res
-        }
-        */
+        key.forEach(e => {
+            var val = this._tree.find(key)?.getValue()
+            if(val) {
+                res.push(val)
+            }
+        })
     }
 
     /**
