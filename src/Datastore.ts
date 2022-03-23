@@ -12,11 +12,14 @@ var customUtils = require('./customUtils')
 */
 
 import { Cursor } from './Cursor'
+import { DatastoreOptions } from './models/DataStoreOptions'
 import { Executor } from './Executor'
-import EventEmitter from 'node:events'
+import { EventEmitter } from 'events'
 import { Persistence } from './Persistence'
 import { Indexer } from './Indexer'
 import _ from 'lodash'
+import { PersistenceOptions } from './models/PersistenceOptions'
+import { Model } from './Model'
 
 /**
  * Create a new collection
@@ -34,69 +37,58 @@ import _ from 'lodash'
  * Event Emitter - Events
  * * compaction.done - Fired whenever a compaction operation was finished
  */
-export default class Datastore extends EventEmitter{
+export class Datastore extends EventEmitter {
+    private _datastoreOptions: DatastoreOptions
     private _executor: Executor
-    private _indexes: {}
-    private _inMemoryOnly: boolean
+    private _indexes: any
     private _persistence: Persistence
+    private _ttlIndexes: any
 
-    public constructor(options) {
+    public constructor(options: DatastoreOptions) {
         super()
-        /*
-        var filename;
 
-        // Retrocompatibility with v0.6 and before
-        if (typeof options === 'string') {
-            filename = options;
-            this.inMemoryOnly = false;   // Default
-        } else {
-            options = options || {};
-            filename = options.filename;
-            this.inMemoryOnly = options.inMemoryOnly || false;
-            this.autoload = options.autoload || false;
-            this.timestampData = options.timestampData || false;
-        }
+        this._datastoreOptions = options
 
         // Determine whether in memory or persistent
-        if (!filename || typeof filename !== 'string' || filename.length === 0) {
-            this.filename = null;
-            this.inMemoryOnly = true;
-        } else {
-            this.filename = filename;
-        }
+        //if(!this._datastoreOptions.filename || this._datastoreOptions.filename.length === 0) {
+        //    this._datastoreOptions.inMemoryOnly = true;
+        //}
 
-        // String comparison function
-        this.compareStrings = options.compareStrings;
-        */
         // Persistence handling
         this._persistence = new Persistence({
             db: this, nodeWebkitAppName: options.nodeWebkitAppName
             , afterSerialization: options.afterSerialization
             , beforeDeserialization: options.beforeDeserialization
             , corruptAlertThreshold: options.corruptAlertThreshold
-        });
+        })
 
         // This new executor is ready if we don't use persistence
         // If we do, it will only be ready once loadDatabase is called
         this._executor = new Executor();
-        //if(this._inMemoryOnly == true) { this.executor.ready = true; }
+        if(this._datastoreOptions.inMemoryOnly == true) { this.executor.isReady = true }
 
-        /*
         // Indexed by field name, dot notation can be used
         // _id is always indexed and since _ids are generated randomly the underlying
         // binary is always well-balanced
-        this.indexes = {};
-        this.indexes._id = new Index({ fieldName: '_id', unique: true });
-        this.ttlIndexes = {};
+        this._indexes = {}
+        this._indexes._id = new Indexer('_id', true)
+        this._ttlIndexes = {}
 
         // Queue a load of the database right away and call the onload handler
         // By default (no onload handler), if there is an error there, no operation will be possible so warn the user by throwing an exception
-        if (this.autoload) {
-            this.loadDatabase(options.onload || function (err) {
-                if (err) { throw err; }
-            });
+        if(this._datastoreOptions.autoload === true) {
+            this.loadDatabase(this._datastoreOptions.onload || function (err) {
+                if(err) { throw err }
+            })
         }
-        */
+    }
+
+    public get fileName(): string {
+        return this._datastoreOptions.filename
+    }
+
+    public get inMemoryOnly(): boolean {
+        return this._datastoreOptions.inMemoryOnly
     }
 
     public get executor() {
@@ -105,19 +97,18 @@ export default class Datastore extends EventEmitter{
 
     /**
      * Load the database from the datafile, and trigger the execution of buffered commands if any
-     *
-    public loadDatabase() {
-        this._executor.push({ this: this._persistence, fn: this._persistence.loadDatabase, arguments: arguments }, true);
-    };
-    */
+     */
+    loadDatabase(cb?: Function) {
+        this._executor.push({ this: this._persistence, fn: this._persistence.loadDatabase, arguments: arguments }, true)
+        // TODO: Handle the callback
+    }
 
     /**
      * Get an array of all the data in the database
-     *
+     */
     public getAllData() {
-        return this._indexer._id.getAll();
+        return this._indexes._id.getAll();
     }
-
 
     /**
      * Reset all currently defined indexes
@@ -126,8 +117,7 @@ export default class Datastore extends EventEmitter{
         _.each(Object.keys(this._indexes), (i) => {
             this._indexes[i].reset(newData)
         })
-    };
-
+    }
 
     /**
      * Ensure an index is kept for this field. Same parameters as lib/indexes
@@ -138,8 +128,9 @@ export default class Datastore extends EventEmitter{
      * @param {Boolean} options.sparse
      * @param {Number} options.expireAfterSeconds - Optional, if set this index becomes a TTL index (only works on Date fields, not arrays of Date)
      * @param {Function} cb Optional callback, signature: err
-     *
-    Datastore.prototype.ensureIndex = function (options, cb) {
+     */
+    public ensureIndex(options, cb?: Function) {
+        /*
         var err
             , callback = cb || function () { };
 
@@ -167,14 +158,14 @@ export default class Datastore extends EventEmitter{
             if (err) { return callback(err); }
             return callback(null);
         });
-    };
-
+        */
+    }
 
     /**
      * Remove an index
      * @param {String} fieldName
      * @param {Function} cb Optional callback, signature: err
-     *
+     */
     public removeIndex(fieldName, cb?: Function) {
         delete this._indexes[fieldName]
 
@@ -183,55 +174,52 @@ export default class Datastore extends EventEmitter{
             if(cb) { cb(null) }
         })
     }
-    */
 
     /**
      * Add one or several document(s) to all indexes
-     *
-    Datastore.prototype.addToIndexes = function (doc) {
-        var i, failingIndex, error
-            , keys = Object.keys(this.indexes)
-            ;
+     */
+    public addToIndexes(doc) {
+        let failingIndex, error
+            , keys = _.keys(this._indexes)
 
-        for (i = 0; i < keys.length; i += 1) {
+        for(let i = 0; i < keys.length; i += 1) {
             try {
-                this.indexes[keys[i]].insert(doc);
+                this._indexes[keys[i]].insert(doc)
             } catch (e) {
-                failingIndex = i;
-                error = e;
-                break;
+                failingIndex = i
+                error = e
+                break
             }
         }
 
         // If an error happened, we need to rollback the insert on all other indexes
-        if (error) {
-            for (i = 0; i < failingIndex; i += 1) {
-                this.indexes[keys[i]].remove(doc);
+        if(error) {
+            for(let i = 0; i < failingIndex; i += 1) {
+                this._indexes[keys[i]].remove(doc)
             }
 
-            throw error;
+            throw error
         }
-    };
-
+    }
 
     /**
      * Remove one or several document(s) from all indexes
-     *
-    Datastore.prototype.removeFromIndexes = function (doc) {
-        var self = this;
-
-        Object.keys(this.indexes).forEach(function (i) {
-            self.indexes[i].remove(doc);
+     */
+    public removeFromIndexes(doc) {
+        _.each(this._indexes, i => {
+            // TODO: _.unset https://lodash.com/docs/4.17.15#unset
+            _.remove(this._indexes[i], doc)
         });
     };
-
 
     /**
      * Update one or several documents in all indexes
      * To update multiple documents, oldDoc must be an array of { oldDoc, newDoc } pairs
      * If one update violates a constraint, all changes are rolled back
-     *
-    Datastore.prototype.updateIndexes = function (oldDoc, newDoc) {
+     */
+    public updateIndexes(oldDoc, newDoc) {
+        // TODO: _.update https://lodash.com/docs/4.17.15#update
+        /*
         var i, failingIndex, error
             , keys = Object.keys(this.indexes)
             ;
@@ -254,8 +242,8 @@ export default class Datastore extends EventEmitter{
 
             throw error;
         }
-    };
-
+        */
+    }
 
     /**
      * Return the list of candidates for a given query
@@ -269,8 +257,9 @@ export default class Datastore extends EventEmitter{
      * @param {Query} query
      * @param {Boolean} dontExpireStaleDocs Optional, defaults to false, if true don't remove stale docs. Useful for the remove function which shouldn't be impacted by expirations
      * @param {Function} callback Signature err, candidates
-     *
-    Datastore.prototype.getCandidates = function (query, dontExpireStaleDocs, callback) {
+     */
+    public getCandidates(query, dontExpireStaleDocs, callback?) {
+        /*
         var indexNames = Object.keys(this.indexes)
             , self = this
             , usableQueryKeys;
@@ -279,7 +268,6 @@ export default class Datastore extends EventEmitter{
             callback = dontExpireStaleDocs;
             dontExpireStaleDocs = false;
         }
-
 
         async.waterfall([
             // STEP 1: get candidates list by checking indexes from most to least frequent usecase
@@ -348,16 +336,17 @@ export default class Datastore extends EventEmitter{
                     return callback(null, validDocs);
                 });
             }]);
-    };
-
+        */
+    }
 
     /**
      * Insert a new document
      * @param {Function} cb Optional callback, signature: err, insertedDoc
      *
      * @api private Use Datastore.insert which has the same signature
-     *
-    Datastore.prototype._insert = function (newDoc, cb) {
+     */
+    private _insert(newDoc, cb) {
+        /*
         var callback = cb || function () { }
             , preparedDoc
             ;
@@ -373,26 +362,30 @@ export default class Datastore extends EventEmitter{
             if (err) { return callback(err); }
             return callback(null, model.deepCopy(preparedDoc));
         });
-    };
+        */
+    }
 
     /**
      * Create a new _id that's not already in use
-     *
-    Datastore.prototype.createNewId = function () {
+     */
+    public createNewId() {
+        /*
         var tentativeId = customUtils.uid(16);
         // Try as many times as needed to get an unused _id. As explained in customUtils, the probability of this ever happening is extremely small, so this is O(1)
         if (this.indexes._id.getMatching(tentativeId).length > 0) {
             tentativeId = this.createNewId();
         }
         return tentativeId;
-    };
+        */
+    }
 
     /**
      * Prepare a document (or array of documents) to be inserted in a database
      * Meaning adds _id and timestamps if necessary on a copy of newDoc to avoid any side effect on user input
      * @api private
-     *
-    Datastore.prototype.prepareDocumentForInsertion = function (newDoc) {
+     */
+    public prepareDocumentForInsertion(newDoc) {
+        /*
         var preparedDoc, self = this;
 
         if (util.isArray(newDoc)) {
@@ -408,26 +401,30 @@ export default class Datastore extends EventEmitter{
         }
 
         return preparedDoc;
-    };
+        */
+    }
 
     /**
      * If newDoc is an array of documents, this will insert all documents in the cache
      * @api private
-     *
-    Datastore.prototype._insertInCache = function (preparedDoc) {
+     */
+    private _insertInCache(preparedDoc) {
+        /*
         if (util.isArray(preparedDoc)) {
             this._insertMultipleDocsInCache(preparedDoc);
         } else {
             this.addToIndexes(preparedDoc);
         }
-    };
+        */
+    }
 
     /**
      * If one insertion fails (e.g. because of a unique constraint), roll back all previous
      * inserts and throws the error
      * @api private
-     *
-    Datastore.prototype._insertMultipleDocsInCache = function (preparedDocs) {
+     */
+    private _insertMultipleDocsInCache(preparedDocs) {
+        /*
         var i, failingI, error;
 
         for (i = 0; i < preparedDocs.length; i += 1) {
@@ -447,80 +444,83 @@ export default class Datastore extends EventEmitter{
 
             throw error;
         }
-    };
-    */
+        */
+    }
 
-    /*
-    public insert() {
-        this._executor.push({ this: this, fn: this._insert, arguments: arguments });
-    };
-    */
+    public insert(...args: any) {
+        this._executor.push({ this: this, fn: this._insert, arguments: args })
+    }
 
     /**
      * Count all documents matching the query
      * @param {Object} query MongoDB-style query
-     *
+     */
     public count(query, callback?: Function) {
         var cursor = new Cursor(this, query, function (err, docs, callback) {
-            if (err) { return callback(err); }
+            if(err) {
+                return callback(err)
+            }
 
-            return callback(null, docs.length);
-        });
+            return callback(null, docs.length)
+        })
 
-        if(callback)
-            cursor.exec(callback)
+        if(callback) {
+            cursor.exec(callback())
         } else {
             return cursor;
         }
-    };
-    */
+    }
 
     /**
      * Find all documents matching the query
      * If no callback is passed, we return the cursor so that user can limit, skip and finally exec
      * @param {Object} query MongoDB-style query
      * @param {Object} projection MongoDB-style projection
-     *
-    Datastore.prototype.find = function (query, projection, callback) {
-        switch (arguments.length) {
+     */
+    public find(query, projection, callback) {
+        switch(arguments.length) {
             case 1:
-                projection = {};
+                projection = {}
+
                 // callback is undefined, will return a cursor
-                break;
+                break
             case 2:
-                if (typeof projection === 'function') {
-                    callback = projection;
-                    projection = {};
-                }   // If not assume projection is an object and callback undefined
-                break;
+                if(typeof projection === 'function') {
+                    callback = projection
+                    projection = {}
+                }
+
+                // If not assume projection is an object and callback undefined
+                break
         }
 
         var cursor = new Cursor(this, query, function (err, docs, callback) {
-            var res = [], i;
+            var res = [], i
 
-            if (err) { return callback(err); }
+            if(err) { return callback(err); }
 
-            for (i = 0; i < docs.length; i += 1) {
-                res.push(model.deepCopy(docs[i]));
+            for(i = 0; i < docs.length; i += 1) {
+                res.push(Model.deepCopy(docs[i]))
             }
-            return callback(null, res);
+            return callback(null, res)
         });
 
         cursor.projection(projection);
-        if (typeof callback === 'function') {
-            cursor.exec(callback);
+        if(typeof callback === 'function') {
+            //cursor.exec(callback)
+            cursor.exec()
         } else {
-            return cursor;
+            return cursor
         }
-    };
-
+    }
 
     /**
      * Find one document matching the query
      * @param {Object} query MongoDB-style query
      * @param {Object} projection MongoDB-style projection
-     *
-    Datastore.prototype.findOne = function (query, projection, callback) {
+     */
+    public findOne(query, projection, callback) {
+        /*
         switch (arguments.length) {
             case 1:
                 projection = {};
@@ -549,8 +549,8 @@ export default class Datastore extends EventEmitter{
         } else {
             return cursor;
         }
-    };
-
+        */
+    }
 
     /**
      * Update all docs matching query
@@ -576,8 +576,9 @@ export default class Datastore extends EventEmitter{
      *          the whole dataset to check its size. Both options being ugly, the breaking change was necessary.
      *
      * @api private Use Datastore.update which has the same signature
-     *
-    Datastore.prototype._update = function (query, updateQuery, options, cb) {
+     */
+    private _update(query: object, updateQuery: object, options?: object, cb?: Function) {
+        /*
         var callback
             , self = this
             , numReplaced = 0
@@ -671,12 +672,12 @@ export default class Datastore extends EventEmitter{
                     });
                 });
             }]);
-    };
+        */
+    }
 
-    Datastore.prototype.update = function () {
-        this.executor.push({ this: this, fn: this._update, arguments: arguments });
-    };
-
+    public update() {
+        this.executor.push({ this: this, fn: this._update, arguments: arguments })
+    }
 
     /**
      * Remove all docs matching the query
@@ -687,8 +688,9 @@ export default class Datastore extends EventEmitter{
      * @param {Function} cb Optional callback, signature: err, numRemoved
      *
      * @api private Use Datastore.remove which has the same signature
-     *
-    Datastore.prototype._remove = function (query, options, cb) {
+     */
+    private _remove(query: object, options?: object, cb?: Function) {
+        /*
         var callback
             , self = this, numRemoved = 0, removedDocs = [], multi
             ;
@@ -715,11 +717,10 @@ export default class Datastore extends EventEmitter{
                 return callback(null, numRemoved);
             });
         });
-    };
+        */
+    }
 
-    Datastore.prototype.remove = function () {
+    public remove() {
         this.executor.push({ this: this, fn: this._remove, arguments: arguments });
-    };
-    */
-
+    }
 }

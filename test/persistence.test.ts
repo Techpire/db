@@ -15,34 +15,46 @@ var should = require('chai').should()
     ;
 */
 
-describe('Persistence', function () {
-    /*
-    var d;
+import async from 'async'
+import { access, constants, existsSync, unlink, writeFileSync } from 'fs'
+import path from 'path'
+import { Datastore } from '../src/Datastore'
+import { DatastoreOptions } from '../src/models/DataStoreOptions'
+import { Persistence } from '../src/Persistence'
+import { Storage } from '../src/Storage'
 
-    beforeEach(function (done) {
-        d = new Datastore({ filename: testDb });
-        d.filename.should.equal(testDb);
-        d.inMemoryOnly.should.equal(false);
+const assert = require('assert')
+const testDb = 'workspace/test.db'
+
+describe('Persistence', function () {
+    let d: Datastore
+
+    beforeEach((done) => {
+        d = new Datastore(new DatastoreOptions({ filename: testDb }));
+
+        assert.equal(testDb, d.fileName)
+        assert.equal(d.inMemoryOnly, false);
 
         async.waterfall([
-            function (cb) {
+            function(cb) {
                 Persistence.ensureDirectoryExists(path.dirname(testDb), function () {
-                    fs.exists(testDb, function (exists) {
-                        if (exists) {
-                            fs.unlink(testDb, cb);
-                        } else { return cb(); }
-                    });
-                });
+                    access(testDb, constants.R_OK, (err) => err ? cb() : unlink(testDb, cb))
+                })
             }
             , function (cb) {
                 d.loadDatabase(function (err) {
-                    assert.isNull(err);
-                    d.getAllData().length.should.equal(0);
-                    return cb();
-                });
+                    assert.isNull(err)
+
+                    assert.equal(0, d.getAllData().length)
+                    return cb()
+                })
             }
-        ], done);
-    });
+        ], done)
+
+        done()
+    })
+
+    /*
 
     it('Every line represents a document', function () {
         var now = new Date()
@@ -906,29 +918,29 @@ describe('Persistence', function () {
         });
 
     });   // ==== End of 'Prevent dataloss when persisting data' ====
+    */
 
+    describe('ensureFileDoesntExist', function() {
+        it('Doesnt do anything if file already doesnt exist', function(done) {
+            Storage.ensureFileDoesntExist('workspace/nonexisting', function(err) {
+                assert.equal(null, err)
+                assert.equal(false, existsSync('workspace/nonexisting'))
 
-    describe('ensureFileDoesntExist', function () {
+                done()
+            })
+        })
 
-        it('Doesnt do anything if file already doesnt exist', function (done) {
-            storage.ensureFileDoesntExist('workspace/nonexisting', function (err) {
-                assert.isNull(err);
-                fs.existsSync('workspace/nonexisting').should.equal(false);
-                done();
-            });
-        });
+        it('Deletes file if it exists', function(done) {
+            writeFileSync('workspace/existing', 'hello world', 'utf8')
+            assert.equal(true, existsSync('workspace/existing'))
 
-        it('Deletes file if it exists', function (done) {
-            fs.writeFileSync('workspace/existing', 'hello world', 'utf8');
-            fs.existsSync('workspace/existing').should.equal(true);
+            Storage.ensureFileDoesntExist('workspace/existing', function(err) {
+                assert.equal(null, err)
+                assert.equal(false, existsSync('workspace/existing'))
 
-            storage.ensureFileDoesntExist('workspace/existing', function (err) {
-                assert.isNull(err);
-                fs.existsSync('workspace/existing').should.equal(false);
-                done();
+                done()
             });
         });
 
     })
-    */
 })

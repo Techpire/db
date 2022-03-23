@@ -11,7 +11,10 @@
     "outDir": "dist",
     "sourceMap": true,
     "declaration": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noImplicitUseStrict": true,
+    "alwaysStrict": false,
+    "strict": false
   },
   "include": [
     "index.ts",

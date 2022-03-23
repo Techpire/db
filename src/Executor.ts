@@ -1,14 +1,17 @@
 import async from 'async'
+import _ from 'lodash'
 
 export class Executor {
     private _buffer: any[] = []
-    private _ready = false
+
+    // TODO: this shouldn't be public
+    public isReady = false
 
     private _queue = async.queue(function(task: any, cb: any): any {
         let newArguments = []
 
-        task.arguments.each(() => {             // TODO: .each performance?
-            newArguments.push(task.argument)
+        _.each(task.arguments, (t) => {
+            newArguments.push(t);
         })
 
         let lastArg = task.arguments[task.arguments.length - 1]
@@ -37,7 +40,7 @@ export class Executor {
     }, 1)
 
     public push(task: any, forceQueuing: boolean = false) {
-        if(this._ready || forceQueuing) {
+        if(this.isReady || forceQueuing) {
             this._queue.push(task)
         } else {
             this._buffer.push(task)

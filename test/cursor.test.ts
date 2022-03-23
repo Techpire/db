@@ -12,68 +12,87 @@
     ;
 */
 
+import _ from "lodash"
+import async from "async"
+import fs from "fs"
+import { Cursor } from "../src/Cursor"
+import { Datastore } from '../src/Datastore'
+import { DatastoreOptions } from '../src/models/DataStoreOptions'
+import { Persistence } from "../src/Persistence"
+
+const assert = require('assert')
+const testDb = 'workspace/test.db'
+
 describe('Cursor', function () {
-    /*
-    var d;
+    let d: Datastore = null
 
-    beforeEach(function (done) {
-        d = new Datastore({ filename: testDb });
-        d.filename.should.equal(testDb);
-        d.inMemoryOnly.should.equal(false);
+    beforeEach(function(done) {
+        let options = new DatastoreOptions()
+        options.filename = testDb
 
+        d = new Datastore(options)
+
+        // These tests are no longer relevant.  Options are private for now
+        //d.filename.should.equal(testDb);
+        //d.inMemoryOnly.should.equal(false);
+        /*
         async.waterfall([
-            function (cb) {
-                Persistence.ensureDirectoryExists(path.dirname(testDb), function () {
-                    fs.exists(testDb, function (exists) {
-                        if (exists) {
-                            fs.unlink(testDb, cb);
-                        } else { return cb(); }
-                    });
-                });
+            function(cb) {
+                fs.unlink('path/file.txt', (err) => {
+                    if(err) return cb()
+
+                    cb()
+                })
             }
-            , function (cb) {
+            , function(cb) {
                 d.loadDatabase(function (err) {
-                    assert.isNull(err);
-                    d.getAllData().length.should.equal(0);
-                    return cb();
-                });
+                    assert.equal(null, err)
+                    d.getAllData().length.should.equal(0)
+                    return cb()
+                })
             }
         ], done)
+        */
+
+        done()
     })
-    */
 
     describe('Without sorting', function () {
-        /*
-        beforeEach(function (done) {
-            d.insert({ age: 5 }, function (err) {
-                d.insert({ age: 57 }, function (err) {
-                    d.insert({ age: 52 }, function (err) {
-                        d.insert({ age: 23 }, function (err) {
-                            d.insert({ age: 89 }, function (err) {
-                                return done();
-                            });
-                        });
-                    });
-                });
-            });
-        });
+        beforeEach(function(done) {
+            d.insert({ age: 5 })
+            //, function (err) {
+            //    d.insert({ age: 57 }, function (err) {
+            //        d.insert({ age: 52 }, function (err) {
+            //            d.insert({ age: 23 }, function (err) {
+            //                d.insert({ age: 89 }, function (err) {
+            //                    return done();
+            //                })
+            //            })
+            //        })
+            //    })
+            //})
 
-        it('Without query, an empty query or a simple query and no skip or limit', function (done) {
+            done()
+        })
+
+        it('Without query, an empty query or a simple query and no skip or limit', function() {
             async.waterfall([
-                function (cb) {
+                function(callback) {
                     var cursor = new Cursor(d);
-                    cursor.exec(function (err, docs) {
-                        assert.isNull(err);
-                        docs.length.should.equal(5);
-                        _.filter(docs, function (doc) { return doc.age === 5; })[0].age.should.equal(5);
-                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57);
-                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52);
-                        _.filter(docs, function (doc) { return doc.age === 23; })[0].age.should.equal(23);
-                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89);
-                        cb();
-                    });
+                    cursor.exec(function(err, docs) {
+                        assert.isNull(err)
+
+                        docs.length.should.equal(5)
+                        _.filter(docs, function (doc) { return doc.age === 5; })[0].age.should.equal(5)
+                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57)
+                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52)
+                        _.filter(docs, function (doc) { return doc.age === 23; })[0].age.should.equal(23)
+                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89)
+
+                        callback()
+                    })
                 }
-                , function (cb) {
+                , function (callback) {
                     var cursor = new Cursor(d, {});
                     cursor.exec(function (err, docs) {
                         assert.isNull(err);
@@ -83,10 +102,10 @@ describe('Cursor', function () {
                         _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52);
                         _.filter(docs, function (doc) { return doc.age === 23; })[0].age.should.equal(23);
                         _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89);
-                        cb();
+                        callback()
                     });
                 }
-                , function (cb) {
+                , function (callback) {
                     var cursor = new Cursor(d, { age: { $gt: 23 } });
                     cursor.exec(function (err, docs) {
                         assert.isNull(err);
@@ -94,12 +113,36 @@ describe('Cursor', function () {
                         _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57);
                         _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52);
                         _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89);
-                        cb();
+                        callback(cursor)
                     });
                 }
-            ], done);
+            ], function(err, result) {
+
+            })
         });
 
+        /*
+        async.waterfall([
+            function (callback) {
+                console.log('one, two')
+                callback(null, 'one', 'two');
+            },
+            function (arg1, arg2, callback) {
+                console.log('three')
+                // arg1 now equals 'one' and arg2 now equals 'two'
+                callback(null, 'three');
+            },
+            function (arg1, callback) {
+                // arg1 now equals 'three'
+                callback(null, 'done');
+            }
+        ], function (err, result) {
+            // result now equals 'done'
+            console.log(result)
+        });
+        */
+
+/*
         it('With an empty collection', function (done) {
             async.waterfall([
                 function (cb) {
@@ -150,9 +193,9 @@ describe('Cursor', function () {
         */
     })
 
-
+/*
     describe('Sorting of the results', function () {
-        /*
+
         beforeEach(function (done) {
             // We don't know the order in which docs wil be inserted but we ensure correctness by testing both sort orders
             d.insert({ age: 5 }, function (err) {
@@ -679,12 +722,10 @@ describe('Cursor', function () {
                 }
             ], done);
         })
-        */
     })
 
-
     describe('Projections', function () {
-    /*
+        /*
         var doc1, doc2, doc3, doc4, doc0;
 
 
@@ -854,7 +895,6 @@ describe('Cursor', function () {
                 done();
             });
         });
-    */
     })
-
+    */
 })

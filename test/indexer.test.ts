@@ -176,20 +176,20 @@ describe('Indexes', function() {
 
         it('Can remove a primitive type key', function () {
             const idx = new Indexer('tf')
-            const doc1 = { a: 5, tf: 'hello' }
+            const doc1 = { a: 5, tf: 5 }
             const doc2 = { a: 8, tf: 2 }
 
             idx.insert(doc1)
             assert.equal(1, idx.count())
-            assert.equal(doc1, idx.find('hello'))
+            assert.equal(doc1, idx.find(5))
 
             idx.insert(doc2)
             assert.equal(2, idx.count())
             assert.equal(doc2, idx.find(2))
 
             idx.remove(2)
-            idx.remove('hello')
-            console.log(0, idx.count())
+            idx.remove(5)
+            assert.equal(0, idx.count())
         })
     })
 
@@ -239,7 +239,6 @@ describe('Indexes', function() {
             assert.deepEqual(idx.find('bloup'), doc3)
 
             expect(function() { idx.update(doc3, bad) }).to.throw()
-            console.log(idx.getAll(true))
 
             // No change
             assert.equal(3, idx.count())

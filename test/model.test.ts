@@ -1,7 +1,4 @@
-import * as chai from 'chai'
 import { expect } from 'chai'
-import Datastore from '../src/Datastore'
-import fs from 'fs'
 import { Model } from '../src/Model'
 import util from 'util'
 

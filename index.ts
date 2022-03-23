@@ -1,4 +1,4 @@
-import Datastore from './src/Datastore'
+import { Datastore } from './src/Datastore'
 
 export {
     Datastore

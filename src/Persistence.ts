@@ -15,6 +15,10 @@ var storage = require('./storage')
     ;
 */
 
+import { Datastore } from "./Datastore"
+import { PersistenceOptions } from "./models/PersistenceOptions"
+import { Storage } from "./Storage"
+
 /**
  * Create a new Persistence object for database options.db
  * @param {Datastore} options.db
@@ -22,11 +26,18 @@ var storage = require('./storage')
  *                                            Node Webkit stores application data such as cookies and local storage (the best place to store data in my opinion)
  */
 export class Persistence {
-    public constructor(options) {
+    private _autocompactionIntervalId: any  // TS has new errors every time when trying to pin down a specific type here
+    private _options: PersistenceOptions
+    private _db: Datastore
+
+    public constructor(options: PersistenceOptions) {
+        this._options = options
+        this._db = options.db
+
         /*
         var i, j, randomString;
 
-        this.db = options.db;
+        ;
         this.inMemoryOnly = this.db.inMemoryOnly;
         this.filename = this.db.filename;
         this.corruptAlertThreshold = options.corruptAlertThreshold !== undefined ? options.corruptAlertThreshold : 0.1;
@@ -67,20 +78,17 @@ export class Persistence {
         */
     }
 
-
     /**
      * Check if a directory exists and create it on the fly if it is not the case
      * cb is optional, signature: err
-     *
-    Persistence.ensureDirectoryExists = function (dir, cb) {
-        var callback = cb || function () { }
-            ;
+     */
+    public static ensureDirectoryExists = function (dir, cb) {
+        var callback = cb ?? function () {}
 
-        storage.mkdirp(dir, function (err) { return callback(err); });
+        Storage.mkdirp(dir, function (err) {
+            return callback(err)
+        })
     };
-
-
-
 
     /**
      * Return the path the datafile if the given filename is relative to the directory where Node Webkit stores
@@ -120,8 +128,9 @@ export class Persistence {
      * This serves as a compaction function since the cache always contains only the number of documents in the collection
      * while the data file is append-only so it may grow larger
      * @param {Function} cb Optional callback, signature: err
-     *
-    Persistence.prototype.persistCachedDatabase = function (cb) {
+     */
+    public persistCachedDatabase(cb: Function) {
+        /*
         var callback = cb || function () { }
             , toPersist = ''
             , self = this
@@ -143,50 +152,50 @@ export class Persistence {
             self.db.emit('compaction.done');
             return callback(null);
         });
-    };
+        */
+    }
 
 
     /**
      * Queue a rewrite of the datafile
-     *
-    Persistence.prototype.compactDatafile = function () {
-        this.db.executor.push({ this: this, fn: this.persistCachedDatabase, arguments: [] });
+     */
+    public compactDatafile() {
+        this._db.executor.push({ this: this, fn: this.persistCachedDatabase, arguments: [] });
     };
 
 
     /**
      * Set automatic compaction every interval ms
-     * @param {Number} interval in milliseconds, with an enforced minimum of 5 seconds
-     *
-    Persistence.prototype.setAutocompactionInterval = function (interval) {
-        var self = this
-            , minInterval = 5000
-            , realInterval = Math.max(interval || 0, minInterval)
-            ;
+     * @param {number} interval in milliseconds, with an enforced minimum of 5 seconds
+     */
+    public setAutocompactionInterval(interval: number) {
+        const minInterval = 5000
+        const realInterval = Math.max((interval ?? 0), minInterval)
 
-        this.stopAutocompaction();
+        this.stopAutocompaction()
 
-        this.autocompactionIntervalId = setInterval(function () {
-            self.compactDatafile();
-        }, realInterval);
-    };
+        this._autocompactionIntervalId = setInterval(function() {
+            this.compactDatafile()
+        }, realInterval)
+    }
 
 
     /**
      * Stop autocompaction (do nothing if autocompaction was not running)
-     *
-    Persistence.prototype.stopAutocompaction = function () {
-        if (this.autocompactionIntervalId) { clearInterval(this.autocompactionIntervalId); }
-    };
-
+     */
+    public stopAutocompaction() {
+        if(this._autocompactionIntervalId)
+            clearInterval(this._autocompactionIntervalId)
+    }
 
     /**
      * Persist new state for the given newDocs (can be insertion, update or removal)
      * Use an append-only format
      * @param {Array} newDocs Can be empty if no doc was updated/removed
      * @param {Function} cb Optional, signature: err
-     *
-    Persistence.prototype.persistNewState = function (newDocs, cb) {
+     */
+    public persistNewState(newDocs: any[], cb: Function) {
+        /*
         var self = this
             , toPersist = ''
             , callback = cb || function () { }
@@ -204,14 +213,16 @@ export class Persistence {
         storage.appendFile(self.filename, toPersist, 'utf8', function (err) {
             return callback(err);
         });
-    };
+        */
+    }
 
 
     /**
      * From a database's raw data, return the corresponding
      * machine understandable collection
-     *
-    Persistence.prototype.treatRawData = function (rawData) {
+     */
+    public treatRawData(rawData: string) {
+        /*
         var data = rawData.split('\n')
             , dataById = {}
             , tdata = []
@@ -251,7 +262,8 @@ export class Persistence {
         });
 
         return { data: tdata, indexes: indexes };
-    };
+        */
+    }
 
 
     /**
@@ -263,8 +275,9 @@ export class Persistence {
      * Also, all data is persisted right away, which has the effect of compacting the database file
      * This operation is very quick at startup for a big collection (60ms for ~10k docs)
      * @param {Function} cb Optional callback, signature: err
-     *
-    Persistence.prototype.loadDatabase = function (cb) {
+     */
+    public loadDatabase(cb: Function) {
+        /*
         var callback = cb || function () { }
             , self = this
             ;
@@ -311,10 +324,6 @@ export class Persistence {
             self.db.executor.processBuffer();
             return callback(null);
         });
-    };
-
-
-    // Interface
-    module.exports = Persistence;
-    */
+        */
+    }
 }

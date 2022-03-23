@@ -29,7 +29,6 @@ export module Model {
         }
 
         if(k.indexOf('.') !== -1) {
-            // console.log('check key: ' + k)
             throw new Error('Field names cannot contain a .')
         }
     }
@@ -122,7 +121,6 @@ export module Model {
 
             Object.keys(obj).forEach(function (k) {
                 if(!strictKeys || (k[0] !== '$' && k.indexOf('.') === -1)) {
-                    //console.log(k)
                     res[k] = deepCopy(obj[k], strictKeys)
                 }
             })

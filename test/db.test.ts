@@ -12,68 +12,72 @@ var should = require('chai').should()
     , reloadTimeUpperBound = 60;   // In ms, an upper bound for the reload time used to check createdAt and updatedAt
 */
 
+import { Datastore } from "../src/Datastore"
+import { DatastoreOptions } from "../src/models/DataStoreOptions"
+import { Model } from "../src/Model"
+import { access, constants, unlink, writeFileSync } from "fs"
+import path from 'path'
+import { Persistence } from "../src/Persistence"
+import { waterfall } from "async"
+import { Storage } from "../src/Storage"
+import _ from "lodash"
+
+const assert = require('assert')
 
 describe('Database', function () {
-    /*
-    var d;
+    let d: Datastore
+    const TEST_DB = 'test/databases/test.db'
+    const AUTO_DB = 'test/databases/auto.db'
 
     beforeEach(function (done) {
-        d = new Datastore({ filename: testDb });
-        d.filename.should.equal(testDb);
-        d.inMemoryOnly.should.equal(false);
+        d = new Datastore({ filename: TEST_DB } as DatastoreOptions)
 
-        async.waterfall([
-            function (cb) {
-                Persistence.ensureDirectoryExists(path.dirname(testDb), function () {
-                    fs.exists(testDb, function (exists) {
-                        if (exists) {
-                            fs.unlink(testDb, cb);
-                        } else { return cb(); }
-                    });
-                });
+        waterfall([
+            (cb) => {
+                Persistence.ensureDirectoryExists(path.dirname(TEST_DB), function () {
+                    access(TEST_DB, constants.F_OK | constants.W_OK, (err) => {
+                        if(err) {
+                            return cb()
+                            //throw err
+                        } else {
+                            unlink(TEST_DB, cb)
+                        }
+                    })
+
+                    // TODO: this may not behave as expected
+                    //return cb()
+                })
             }
-            , function (cb) {
-                d.loadDatabase(function (err) {
-                    assert.isNull(err);
-                    d.getAllData().length.should.equal(0);
-                    return cb();
-                });
+            , (cb) => {
+                d.loadDatabase(function(err) {
+                    assert.isNull(err)
+                    d.getAllData().length.should.equal(0)
+
+                    return cb()
+                })
             }
-        ], done);
-    });
-
-    it('Constructor compatibility with v0.6-', function () {
-        var dbef = new Datastore('somefile');
-        dbef.filename.should.equal('somefile');
-        dbef.inMemoryOnly.should.equal(false);
-
-        var dbef = new Datastore('');
-        assert.isNull(dbef.filename);
-        dbef.inMemoryOnly.should.equal(true);
-
-        var dbef = new Datastore();
-        assert.isNull(dbef.filename);
-        dbef.inMemoryOnly.should.equal(true);
-    });
+        ], done)
+    })
 
     describe('Autoloading', function () {
+        /*
+        it('Can autoload a database and query it right away', function(done) {
+            const fileStr = Model.serialize({ _id: '1', a: 5, planet: 'Earth' }) + '\n' + Model.serialize({ _id: '2', a: 5, planet: 'Mars' }) + '\n'
+            let db;
 
-        it('Can autoload a database and query it right away', function (done) {
-            var fileStr = model.serialize({ _id: '1', a: 5, planet: 'Earth' }) + '\n' + model.serialize({ _id: '2', a: 5, planet: 'Mars' }) + '\n'
-                , autoDb = 'workspace/auto.db'
-                , db
-                ;
-
-            fs.writeFileSync(autoDb, fileStr, 'utf8');
-            db = new Datastore({ filename: autoDb, autoload: true })
+            writeFileSync(AUTO_DB, fileStr, 'utf8');
+            db = new Datastore({ filename: AUTO_DB, autoload: true } as DatastoreOptions)
 
             db.find({}, function (err, docs) {
                 assert.isNull(err);
-                docs.length.should.equal(2);
-                done();
-            });
-        });
+                docs.length.should.equal(2)
 
+                done()
+            })
+        })
+
+
+        /*
         it('Throws if autoload fails', function (done) {
             var fileStr = model.serialize({ _id: '1', a: 5, planet: 'Earth' }) + '\n' + model.serialize({ _id: '2', a: 5, planet: 'Mars' }) + '\n' + '{"$$indexCreated":{"fieldName":"a","unique":true}}'
                 , autoDb = 'workspace/auto.db'
@@ -94,11 +98,11 @@ describe('Database', function () {
                 done(new Error("Find should not be executed since autoload failed"));
             });
         });
-
+        */
     });
 
     describe('Insert', function () {
-
+        /*
         it('Able to insert a document in the database, setting an _id if none provided, and retrieve it even after a reload', function (done) {
             d.find({}, function (err, docs) {
                 docs.length.should.equal(0);
@@ -422,12 +426,11 @@ describe('Database', function () {
                 });
             });
         });
-
-    });   // ==== End of 'Insert' ==== //
-
+        */
+    })
 
     describe('#getCandidates', function () {
-
+        /*
         it('Can use an index to get docs with a basic match', function (done) {
             d.ensureIndex({ fieldName: 'tf' }, function (err) {
                 d.insert({ tf: 4 }, function (err, _doc1) {
@@ -629,12 +632,11 @@ describe('Database', function () {
                 });
             });
         });
-
-    });   // ==== End of '#getCandidates' ==== //
-
+        */
+    })
 
     describe('Find', function () {
-
+        /*
         it('Can find all documents if an empty query is used', function (done) {
             async.waterfall([
                 function (cb) {
@@ -944,11 +946,11 @@ describe('Database', function () {
                 });
             });
         });
-
-    });   // ==== End of 'Find' ==== //
+        */
+    })
 
     describe('Count', function () {
-
+        /*
         it('Count all documents if an empty query is used', function (done) {
             async.waterfall([
                 function (cb) {
@@ -1029,11 +1031,11 @@ describe('Database', function () {
                 });
             });
         });
-
-    });
+        */
+    })
 
     describe('Update', function () {
-
+        /*
         it("If the query doesn't match anything, database is not modified", function (done) {
             async.waterfall([
                 function (cb) {
@@ -1211,9 +1213,10 @@ describe('Database', function () {
                 , async.apply(testPostUpdateState)   // The persisted state has been updated
             ], done);
         });
+        */
 
         describe('Upserts', function () {
-
+            /*
             it('Can perform upserts if needed', function (done) {
                 d.update({ impossible: 'db is empty anyway' }, { newDoc: true }, {}, function (err, nr, upsert) {
                     assert.isNull(err);
@@ -1296,10 +1299,10 @@ describe('Database', function () {
                     done();
                 })
             });
+            */
+        })
 
-
-        });   // ==== End of 'Upserts' ==== //
-
+        /*
         it('Cannot perform update if the update query is not either registered-modifiers-only or copy-only, or contain badly formatted fields', function (done) {
             d.insert({ something: 'yup' }, function () {
                 d.update({}, { boom: { $badfield: 5 } }, { multi: false }, function (err) {
@@ -1647,11 +1650,11 @@ describe('Database', function () {
                     });
                 }, 20);
             });
-        });
-
+        })
+        */
 
         describe("Callback signature", function () {
-
+            /*
             it("Regular update, multi false", function (done) {
                 d.insert({ a: 1 });
                 d.insert({ a: 2 });
@@ -1725,15 +1728,12 @@ describe('Database', function () {
                     });
                 });
             });
-
-
-        });   // ==== End of 'Update - Callback signature' ==== //
-
-    });   // ==== End of 'Update' ==== //
-
+            */
+        })
+    })
 
     describe('Remove', function () {
-
+        /*
         it('Can remove multiple documents', function (done) {
             var id1, id2, id3;
 
@@ -1902,14 +1902,12 @@ describe('Database', function () {
                 });
             });
         });
-
-    });   // ==== End of 'Remove' ==== //
-
+        */
+    })
 
     describe('Using indexes', function () {
-
         describe('ensureIndex and index initialization in database loading', function () {
-
+            /*
             it('ensureIndex can be called right after a loadDatabase and be initialized and filled correctly', function (done) {
                 var now = new Date()
                     , rawData = model.serialize({ _id: "aaa", z: "1", a: 2, ages: [1, 5, 12] }) + '\n' +
@@ -2160,12 +2158,12 @@ describe('Database', function () {
                     });
                 });
             });
-
-        });   // ==== End of 'ensureIndex and index initialization in database loading' ==== //
+            */
+        })
 
 
         describe('Indexing newly inserted documents', function () {
-
+            /*
             it('Newly inserted documents are indexed', function (done) {
                 d.ensureIndex({ fieldName: 'z' });
                 d.indexes.z.tree.getNumberOfKeys().should.equal(0);
@@ -2364,11 +2362,11 @@ describe('Database', function () {
                     });
                 });
             });
-
-        });   // ==== End of 'Indexing newly inserted documents' ==== //
+            */
+        })
 
         describe('Updating indexes upon document update', function () {
-
+            /*
             it('Updating docs still works as before with indexing', function (done) {
                 d.ensureIndex({ fieldName: 'a' });
 
@@ -2558,11 +2556,11 @@ describe('Database', function () {
                     });
                 });
             });
-
-        });   // ==== End of 'Updating indexes upon document update' ==== //
+            */
+        })
 
         describe('Updating indexes upon document remove', function () {
-
+            /*
             it('Removing docs still works as before with indexing', function (done) {
                 d.ensureIndex({ fieldName: 'a' });
 
@@ -2643,12 +2641,11 @@ describe('Database', function () {
                     });
                 });
             });
-
-        });   // ==== End of 'Updating indexes upon document remove' ==== //
-
+            */
+        })
 
         describe('Persisting indexes', function () {
-
+            /*
             it('Indexes are persisted to a separate file and recreated upon reload', function (done) {
                 var persDb = "workspace/persistIndexes.db"
                     , db
@@ -2859,9 +2856,10 @@ describe('Database', function () {
                     });
                 });
             });
+            */
+        })
 
-        });   // ==== End of 'Persisting indexes' ====
-
+        /*
         it('Results of getMatching should never contain duplicates', function (done) {
             d.ensureIndex({ fieldName: 'bad' });
             d.insert({ bad: ['a', 'b'] }, function () {
@@ -2871,7 +2869,6 @@ describe('Database', function () {
                 });
             });
         });
-
-    });   // ==== End of 'Using indexes' ==== //
-    */
+        */
+    })
 })

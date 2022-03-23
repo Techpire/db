@@ -24,39 +24,55 @@ storage.readFile = fs.readFile;
 storage.mkdirp = mkdirp;
 */
 
-import fs from 'fs'
+import { access, appendFile, constants, mkdir, readFile, rename, unlink, writeFile } from 'fs'
 
 export class Storage {
-    //public exists = fs.exists;
-    public rename = fs.rename;
-    public writeFile = fs.writeFile;
-    public unlink = fs.unlink;
-    public appendFile = fs.appendFile;
-    public readFile = fs.readFile;
-
-    constructor() {
-
-    }
+    public rename = rename;
+    public writeFile = writeFile;
+    public unlink = unlink;
+    public appendFile = appendFile;
+    public readFile = readFile;
 
     /**
      * Explicit name ...
-     *
-    storage.ensureFileDoesntExist = function (file, callback) {
-        storage.exists(file, function (exists) {
-            if (!exists) { return callback(null); }
+     */
+    public static ensureFileDoesntExist(file, callback) {
+        this.exists(file, function(err) {
+            if(err) {
+                return callback(null)
+            }
 
-            storage.unlink(file, function (err) { return callback(err); });
-        });
-    };
+            unlink(file, function(err) {
+                return callback(err)
+            })
+        })
+    }
 
+    public static exists(file, callback) {
+        // If the file is visible and writable to the executing process.
+        access(file, constants.F_OK, (err) => {
+            return callback(err)
+        })
+    }
+
+    public static mkdirp(dir: string, callback?) {
+        mkdir(dir, { recursive: true }, (err) => {
+            if(err) {
+                return callback(err)
+            }
+
+            return callback(null)
+        })
+    }
 
     /**
      * Flush data in OS buffer to storage if corresponding option is set
      * @param {String} options.filename
      * @param {Boolean} options.isDir Optional, defaults to false
      * If options is a string, it is assumed that the flush of the file (not dir) called options was requested
-     *
-    storage.flushToStorage = function (options, callback) {
+     */
+    public static flushToStorage(options, callback) {
+        /*
         var filename, flags;
         if (typeof options === 'string') {
             filename = options;
@@ -85,16 +101,17 @@ export class Storage {
                 });
             });
         });
-    };
-
+        */
+    }
 
     /**
      * Fully write or rewrite the datafile, immune to crashes during the write operation (data will not be lost)
      * @param {String} filename
      * @param {String} data
      * @param {Function} cb Optional callback, signature: err
-     *
-    storage.crashSafeWriteFile = function (filename, data, cb) {
+     */
+    public static crashSafeWriteFile(filename: string, data: string, cb: Function) {
+        /*
         var callback = cb || function () { }
             , tempFilename = filename + '~';
 
@@ -118,15 +135,16 @@ export class Storage {
             }
             , async.apply(storage.flushToStorage, { filename: path.dirname(filename), isDir: true })
         ], function (err) { return callback(err); })
-    };
-
+        */
+    }
 
     /**
      * Ensure the datafile contains all the data, even if there was a crash during a full file write
      * @param {String} filename
      * @param {Function} callback signature: err
-     *
-    storage.ensureDatafileIntegrity = function (filename, callback) {
+     */
+    public static ensureDatafileIntegrity(filename: string, callback: Function) {
+        /*
         var tempFilename = filename + '~';
 
         storage.exists(filename, function (filenameExists) {
@@ -143,7 +161,6 @@ export class Storage {
                 storage.rename(tempFilename, filename, function (err) { return callback(err); });
             });
         });
-    };
-    module.exports = storage;
-    */
+        */
+    }
 }

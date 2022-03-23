@@ -7,7 +7,7 @@
 
 import * as chai from 'chai'
 import { expect } from 'chai'
-import Datastore from '../src/Datastore'
+import { Datastore } from '../src/Datastore'
 import fs from 'fs'
 import { Model } from '../src/Model'
 import util from 'util'
@@ -15,6 +15,7 @@ import util from 'util'
 const assert = require('assert')
 
 /*
+function testThrowInCallback(d, done) {
     // Test that even if a callback throws an exception, the next DB operations will still be executed
     // We prevent Mocha from catching the exception we throw on purpose by remembering all current handlers, remove them and register them back after test ends
 
@@ -212,4 +213,5 @@ describe('Executor', function () {
         });
 
     });
+});
 */

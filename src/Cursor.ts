@@ -1,35 +1,30 @@
-/*
 /**
  * Manage access to data, be it to find, update or remove it
  *
-var model = require('./model')
-    , _ = require('underscore')
-    ;
-*/
-
-import Datastore from "./Datastore"
+ */
 import * as _ from 'lodash'
+import { Datastore } from "./Datastore"
 import { Model } from './Model'
 
 /**
  * Create a new cursor for this collection
  * @param {Datastore} db - The datastore this cursor is bound to
  * @param {Query} query - The query this cursor will operate on
- * @param {Function} execFn - Handler to be executed after cursor has found the results and before the callback passed to find/findOne/update/remove
+ * @param {Function} execFunction - Handler to be executed after cursor has found the results and before the callback passed to find/findOne/update/remove
  */
 export class Cursor {
     private readonly _db: Datastore
     private readonly _query
-    private readonly _execFunction
+    private readonly _execFn
     private _limit
     private _skip
     private _sort
     private _projection
 
-    public constructor(db: Datastore, query: object, execFunction) {
+    public constructor(db: Datastore, query?: object, execFunction?: Function) {
         this._db = db
         this._query = query || {}
-        this._execFunction = execFunction ?? null
+        this._execFn = execFunction ?? null
     }
 
     /**
@@ -37,11 +32,13 @@ export class Cursor {
      */
     public limit (limit) {
         this._limit = limit
+
         return this
     }
 
     public skip (skip) {
         this._skip = skip
+
         return this
     }
 
@@ -51,6 +48,7 @@ export class Cursor {
      */
     public sort(sortQuery) {
         this._sort = sortQuery
+
         return this
     };
 
@@ -62,6 +60,7 @@ export class Cursor {
      */
     public projection(projection) {
         this._projection = projection
+
         return this
     };
 
@@ -82,7 +81,7 @@ export class Cursor {
 
         // Check for consistency
         keys = Object.keys(this._projection)
-        keys.forEach(function (k) {
+        _.each(keys, k => {
             if(action !== undefined && this._projection[k] !== action) {
                 throw new Error("Can't both keep and omit fields except for _id")
             }
@@ -91,13 +90,13 @@ export class Cursor {
         })
 
         // Do the actual projection
-        candidates.forEach(function(candidate) {
-            var toPush
+        _.each(candidates, candidate => {
+            let toPush
 
             if(action === 1) {   // pick-type projection
                 toPush = { $set: {} }
 
-                keys.forEach(function (k) {
+                _.each(keys, k => {
                     toPush.$set[k] = Model.getDotValue(candidate, k)
 
                     if(toPush.$set[k] === undefined) { delete toPush.$set[k] }
@@ -131,87 +130,93 @@ export class Cursor {
      * @param {Function} callback - Signature: err, results
      */
     private _exec(_callback) {
-        /*
-        var res = [], added = 0, skipped = 0, self = this
+        var res = []
+            , added = 0
+            , skipped = 0
             , error = null
-            , i, keys, key
+            , keys
+            , key
             ;
 
-        function callback(error, res) {
-            if (self.execFn) {
-                return self.execFn(error, res, _callback);
+        function callback(error, res?) {
+            if(this.execFn) {
+                return this._execFn(error, res, _callback);
             } else {
                 return _callback(error, res);
             }
         }
 
-        this.db.getCandidates(this.query, function (err, candidates) {
-            if (err) { return callback(err); }
+        this._db.getCandidates(this._query, function(err, candidates) {
+            if(err) { return callback(err) }
 
             try {
-                for (i = 0; i < candidates.length; i += 1) {
-                    if (model.match(candidates[i], self.query)) {
+                _.forEach(candidates, function(c) {
+                    if(Model.match(c, this._query)) {
                         // If a sort is defined, wait for the results to be sorted before applying limit and skip
-                        if (!self._sort) {
-                            if (self._skip && self._skip > skipped) {
-                                skipped += 1;
+                        if(!this._sort) {
+                            if(this._skip && this._skip > skipped) {
+                                skipped += 1
                             } else {
-                                res.push(candidates[i]);
-                                added += 1;
-                                if (self._limit && self._limit <= added) { break; }
+                                res.push(c)
+                                added += 1
+
+                                if(this._limit && this._limit <= added) { return false }
                             }
                         } else {
-                            res.push(candidates[i]);
+                            res.push(c)
                         }
                     }
-                }
+                })
             } catch (err) {
                 return callback(err);
             }
 
             // Apply all sorts
-            if (self._sort) {
-                keys = Object.keys(self._sort);
+            if(this._sort) {
+                keys = Object.keys(this._sort)
 
                 // Sorting
-                var criteria = [];
-                for (i = 0; i < keys.length; i++) {
-                    key = keys[i];
-                    criteria.push({ key: key, direction: self._sort[key] });
-                }
-                res.sort(function (a, b) {
-                    var criterion, compare, i;
-                    for (i = 0; i < criteria.length; i++) {
-                        criterion = criteria[i];
-                        compare = criterion.direction * model.compareThings(model.getDotValue(a, criterion.key), model.getDotValue(b, criterion.key), self.db.compareStrings);
-                        if (compare !== 0) {
+                var criteria = []
+
+                _.each(keys, function(k) {
+                    //criteria.push({ key: k, direction: this._sort[k] })
+                    criteria.push({ key: k, direction: this._sort })
+                })
+
+                res.sort(function(a, b) {
+                    let compare
+
+                    _.each(criteria, function (c) {
+                        compare = c.direction * Model.compareThings(Model.getDotValue(a, c.key), Model.getDotValue(b, c.key), this._db.compareStrings);
+
+                        if(compare !== 0) {
                             return compare;
                         }
-                    }
-                    return 0;
-                });
+                    })
+
+                    return 0
+                })
 
                 // Applying limit and skip
-                var limit = self._limit || res.length
-                    , skip = self._skip || 0;
+                var limit = this._limit || res.length
+                    , skip = this._skip || 0
 
-                res = res.slice(skip, skip + limit);
+                res = res.slice(skip, skip + limit)
             }
 
             // Apply projection
             try {
-                res = self.project(res);
+                res = this.project(res)
             } catch (e) {
-                error = e;
-                res = undefined;
+                error = e
+                res = undefined
             }
 
-            return callback(error, res);
-        });
-        */
+            return callback(error, res)
+        })
     }
 
-    public exec() {
-        this._db.executor.push({ this: this, fn: this._exec, arguments: arguments })
+    public exec(args?: any) {
+        this._db.executor.push({ this: this, fn: this._exec, arguments: args })
     }
-}
+}1

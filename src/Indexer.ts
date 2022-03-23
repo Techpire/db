@@ -94,6 +94,7 @@ export class Indexer {
 
         // TODO: Not checking the key for primitive types would technically allow for objects as keys.
         if(_.isArray(key)) { throw new Error("Cannot use an array for an index") }
+
         if(this._isUniqueKeys && this._tree.has(key))
             throw new Error("Cannot insert key " + key + ", it violates the unique constraint")
 
