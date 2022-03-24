@@ -56,7 +56,8 @@ export class Datastore extends EventEmitter {
 
         // Persistence handling
         this._persistence = new Persistence({
-            db: this, nodeWebkitAppName: options.nodeWebkitAppName
+            db: this
+            , nodeWebkitAppName: options.nodeWebkitAppName
             , afterSerialization: options.afterSerialization
             , beforeDeserialization: options.beforeDeserialization
             , corruptAlertThreshold: options.corruptAlertThreshold
@@ -65,7 +66,9 @@ export class Datastore extends EventEmitter {
         // This new executor is ready if we don't use persistence
         // If we do, it will only be ready once loadDatabase is called
         this._executor = new Executor();
-        if(this._datastoreOptions.inMemoryOnly == true) { this.executor.isReady = true }
+        if(this._datastoreOptions.inMemoryOnly == true) {
+            this.executor.isReady = true
+        }
 
         // Indexed by field name, dot notation can be used
         // _id is always indexed and since _ids are generated randomly the underlying
@@ -91,16 +94,32 @@ export class Datastore extends EventEmitter {
         return this._datastoreOptions.inMemoryOnly
     }
 
-    public get executor() {
+    public get executor(): Executor {
         return this._executor
+    }
+
+    public get persistence(): Persistence {
+        return this._persistence
+    }
+
+    public get indexes(): any {
+        return this._indexes
+    }
+
+    private _test: string = 'test'
+    public get test(): string {
+        return this._test
     }
 
     /**
      * Load the database from the datafile, and trigger the execution of buffered commands if any
      */
-    loadDatabase(cb?: Function) {
+    public loadDatabase(cb?: Function) {
         this._executor.push({ this: this._persistence, fn: this._persistence.loadDatabase, arguments: arguments }, true)
-        // TODO: Handle the callback
+
+        if(cb) {
+            cb()
+        }
     }
 
     /**
@@ -113,7 +132,7 @@ export class Datastore extends EventEmitter {
     /**
      * Reset all currently defined indexes
      */
-    public resetIndexes(newData) {
+    public resetIndexes(newData?: any) {
         _.each(Object.keys(this._indexes), (i) => {
             this._indexes[i].reset(newData)
         })

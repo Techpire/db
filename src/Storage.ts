@@ -27,11 +27,11 @@ storage.mkdirp = mkdirp;
 import { access, appendFile, constants, mkdir, readFile, rename, unlink, writeFile } from 'fs'
 
 export class Storage {
-    public rename = rename;
-    public writeFile = writeFile;
-    public unlink = unlink;
-    public appendFile = appendFile;
-    public readFile = readFile;
+    public static rename = rename
+    public static writeFile = writeFile
+    public static unlink = unlink
+    public static appendFile = appendFile
+    public static readFile = readFile
 
     /**
      * Explicit name ...

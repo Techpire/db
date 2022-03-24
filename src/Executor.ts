@@ -1,4 +1,4 @@
-import async from 'async'
+import { queue } from 'async'
 import _ from 'lodash'
 
 export class Executor {
@@ -7,10 +7,10 @@ export class Executor {
     // TODO: this shouldn't be public
     public isReady = false
 
-    private _queue = async.queue(function(task: any, cb: any): any {
+    private _queue = queue(function(task: any, cb: any): any {
         let newArguments = []
 
-        _.each(task.arguments, (t) => {
+        _.each(task.arguments, function(t) {
             newArguments.push(t);
         })
 
@@ -19,7 +19,7 @@ export class Executor {
         // Always tell the queue task is complete. Execute callback if any was given.
         if(typeof lastArg === 'function') {
             // Callback was supplied
-            newArguments[newArguments.length - 1] = function () {
+            newArguments[newArguments.length - 1] = function() {
                 if(typeof setImmediate === 'function') {
                     setImmediate(cb)
                 } else {
@@ -30,27 +30,30 @@ export class Executor {
             }
         } else if(!lastArg && task.arguments.length !== 0) {
             // false/undefined/null supplied as callbback
-            newArguments[newArguments.length - 1] = function () { cb() }
+            newArguments[newArguments.length - 1] = function() { cb() }
         } else {
             // Nothing supplied as callback
-            newArguments.push(function () { cb() })
+            newArguments.push(function() { cb() })
         }
 
         task.fn.apply(task.this, newArguments)
     }, 1)
 
     public push(task: any, forceQueuing: boolean = false) {
-        if(this.isReady || forceQueuing) {
+        if(this.isReady == true || forceQueuing == true) {
             this._queue.push(task)
         } else {
             this._buffer.push(task)
         }
     }
 
-    public processBuffer = function () {
+    public processBuffer = function() {
         this.ready = true
 
-        for(let i = 0; i < this._buffer.length; i += 1) { this.queue.push(this.buffer[i]) }
+        _.each(this._buffer, (task) => {
+            this._queue.push(task)
+        })
+
         this.buffer = []
     }
 }

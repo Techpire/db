@@ -1,5 +1,3 @@
-// , util = require('util')
-
 import { AvlTree } from '@datastructures-js/binary-search-tree'
 //import { BinarySearchTree } from '@datastructures-js/binary-search-tree'
 import _ from 'lodash'

@@ -21,7 +21,7 @@ export class PersistenceOptions {
             this.nodeWebkitAppName = options.nodeWebkitAppName ?? null
             this.afterSerialization = options.afterSerialization ?? null
             this.beforeDeserialization = options.beforeDeserialization ?? null
-            this.corruptAlertThreshold = options.corruptAlertThreshold ?? null
+            this.corruptAlertThreshold = options.corruptAlertThreshold ?? 0.1
         }
     }
 }

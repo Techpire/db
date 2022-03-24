@@ -1,21 +1,9 @@
-/*
-/**
- * Handle every persistence-related task
- * The interface Datastore expects to be implemented is
- * * Persistence.loadDatabase(callback) and callback has signature err
- * * Persistence.persistNewState(newDocs, callback) where newDocs is an array of documents and callback has signature err
- *
-
-var storage = require('./storage')
-    , path = require('path')
-    , model = require('./model')
-    , async = require('async')
-    , customUtils = require('./customUtils')
-    , Index = require('./indexes')
-    ;
-*/
-
+import { waterfall } from "async"
+import _ from "lodash"
+import path from "path"
 import { Datastore } from "./Datastore"
+import { Indexer } from "./Indexer"
+import { Model } from "./Model"
 import { PersistenceOptions } from "./models/PersistenceOptions"
 import { Storage } from "./Storage"
 
@@ -29,10 +17,15 @@ export class Persistence {
     private _autocompactionIntervalId: any  // TS has new errors every time when trying to pin down a specific type here
     private _options: PersistenceOptions
     private _db: Datastore
+    private _afterSerialization
+    private _corruptAlertThreshold
+    private _beforeDeserialization
 
     public constructor(options: PersistenceOptions) {
         this._options = options
         this._db = options.db
+
+        // TODO: handle null database option
 
         /*
         var i, j, randomString;
@@ -45,25 +38,29 @@ export class Persistence {
         if (!this.inMemoryOnly && this.filename && this.filename.charAt(this.filename.length - 1) === '~') {
             throw new Error("The datafile name can't end with a ~, which is reserved for crash safe backup files");
         }
+        */
 
         // After serialization and before deserialization hooks with some basic sanity checks
-        if (options.afterSerialization && !options.beforeDeserialization) {
-            throw new Error("Serialization hook defined but deserialization hook undefined, cautiously refusing to start NeDB to prevent dataloss");
-        }
-        if (!options.afterSerialization && options.beforeDeserialization) {
-            throw new Error("Serialization hook undefined but deserialization hook defined, cautiously refusing to start NeDB to prevent dataloss");
-        }
-        this.afterSerialization = options.afterSerialization || function (s) { return s; };
-        this.beforeDeserialization = options.beforeDeserialization || function (s) { return s; };
-        for (i = 1; i < 30; i += 1) {
-            for (j = 0; j < 10; j += 1) {
-                randomString = customUtils.uid(i);
-                if (this.beforeDeserialization(this.afterSerialization(randomString)) !== randomString) {
-                    throw new Error("beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start NeDB to prevent dataloss");
-                }
-            }
+        if(options.afterSerialization && !options.beforeDeserialization) {
+            throw new Error("Serialization hook defined but deserialization hook undefined, cautiously refusing to start NeDB to prevent dataloss")
         }
 
+        if(!options.afterSerialization && options.beforeDeserialization) {
+            throw new Error("Serialization hook undefined but deserialization hook defined, cautiously refusing to start NeDB to prevent dataloss")
+        }
+
+        this._afterSerialization = options.afterSerialization || function (s) { return s; }
+        this._beforeDeserialization = options.beforeDeserialization || function (s) { return s; }
+
+        let randomString = "ASLDKFJ19084737z*(S7D68761239874RSD7F*)&^967858 ~!@#$%^&*(qieybadfobiupbqiutyhasd;hty!"
+
+        if(this._beforeDeserialization(this._afterSerialization(randomString)) !== randomString) {
+            throw new Error("beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start NeDB to prevent dataloss")
+        }
+
+
+
+        /*
         // For NW apps, store data in the same directory where NW stores application data
         if (this.filename && options.nodeWebkitAppName) {
             console.log("==================================================================");
@@ -82,10 +79,10 @@ export class Persistence {
      * Check if a directory exists and create it on the fly if it is not the case
      * cb is optional, signature: err
      */
-    public static ensureDirectoryExists = function (dir, cb) {
+    public static ensureDirectoryExists = function(dir, cb) {
         var callback = cb ?? function () {}
 
-        Storage.mkdirp(dir, function (err) {
+        Storage.mkdirp(dir, function(err) {
             return callback(err)
         })
     };
@@ -222,47 +219,44 @@ export class Persistence {
      * machine understandable collection
      */
     public treatRawData(rawData: string) {
-        /*
-        var data = rawData.split('\n')
-            , dataById = {}
-            , tdata = []
-            , i
-            , indexes = {}
-            , corruptItems = -1   // Last line of every data file is usually blank so not really corrupt
-            ;
+        let data = rawData.split('\n')
+        let dataById = {}
+        let tdata = []
+        let indexes = {}
+        let corruptItems = -1   // Last line of every data file is usually blank so not really corrupt
 
-        for (i = 0; i < data.length; i += 1) {
-            var doc;
+        _.each(data, (line) => {
+            let doc
 
             try {
-                doc = model.deserialize(this.beforeDeserialization(data[i]));
-                if (doc._id) {
-                    if (doc.$$deleted === true) {
-                        delete dataById[doc._id];
+                doc = Model.deserialize(this._beforeDeserialization(line))
+
+                if(doc._id) {
+                    if(doc.$$deleted === true) {
+                        delete dataById[doc._id]
                     } else {
-                        dataById[doc._id] = doc;
+                        dataById[doc._id] = doc
                     }
-                } else if (doc.$$indexCreated && doc.$$indexCreated.fieldName != undefined) {
-                    indexes[doc.$$indexCreated.fieldName] = doc.$$indexCreated;
-                } else if (typeof doc.$$indexRemoved === "string") {
-                    delete indexes[doc.$$indexRemoved];
+                } else if(doc.$$indexCreated && doc.$$indexCreated.fieldName != undefined) {
+                    indexes[doc.$$indexCreated.fieldName] = doc.$$indexCreated
+                } else if(typeof doc.$$indexRemoved === "string") {
+                    delete indexes[doc.$$indexRemoved]
                 }
             } catch (e) {
-                corruptItems += 1;
+                corruptItems += 1
             }
-        }
+        })
 
         // A bit lenient on corruption
-        if (data.length > 0 && corruptItems / data.length > this.corruptAlertThreshold) {
-            throw new Error("More than " + Math.floor(100 * this.corruptAlertThreshold) + "% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start NeDB to prevent dataloss");
+        if(data.length > 0 && corruptItems / data.length > this._corruptAlertThreshold) {
+            throw new Error(`More than ${ Math.floor(100 * this._corruptAlertThreshold) }% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start NeDB to prevent dataloss`);
         }
 
-        Object.keys(dataById).forEach(function (k) {
-            tdata.push(dataById[k]);
-        });
+        _.each(Object.keys(dataById), k => {
+            tdata.push(dataById[k])
+        })
 
-        return { data: tdata, indexes: indexes };
-        */
+        return { data: tdata, indexes: indexes }
     }
 
 
@@ -276,54 +270,58 @@ export class Persistence {
      * This operation is very quick at startup for a big collection (60ms for ~10k docs)
      * @param {Function} cb Optional callback, signature: err
      */
-    public loadDatabase(cb: Function) {
-        /*
-        var callback = cb || function () { }
-            , self = this
-            ;
+    public loadDatabase(cb?: Function) {
+        let callback = cb ?? function() { }
+        let self = this
 
-        self.db.resetIndexes();
+        this._db.resetIndexes()
 
         // In-memory only datastore
-        if (self.inMemoryOnly) { return callback(null); }
+        if(this._db.inMemoryOnly && this._db.inMemoryOnly == true) { return callback(null) }
 
-        async.waterfall([
-            function (cb) {
-                Persistence.ensureDirectoryExists(path.dirname(self.filename), function (err) {
-                    storage.ensureDatafileIntegrity(self.filename, function (err) {
-                        storage.readFile(self.filename, 'utf8', function (err, rawData) {
-                            if (err) { return cb(err); }
+        waterfall([
+            function(cb) {
+                Persistence.ensureDirectoryExists(path.dirname(self._db.fileName), function(err) {
+                    Storage.ensureDatafileIntegrity(self._db.fileName, function(err) {
+                        Storage.readFile(self._db.fileName, 'utf8', function(err, rawData) {
+                            if(err) { return cb(err) }
+
+                            let treatedData
 
                             try {
-                                var treatedData = self.treatRawData(rawData);
-                            } catch (e) {
-                                return cb(e);
+                                treatedData = self.treatRawData(rawData)
+                            } catch(e) {
+                                return cb(e)
                             }
 
                             // Recreate all indexes in the datafile
-                            Object.keys(treatedData.indexes).forEach(function (key) {
-                                self.db.indexes[key] = new Index(treatedData.indexes[key]);
-                            });
+                            _.each(Object.keys(treatedData.indexes), function(key) {
+                                self._db.indexes[key] = new Indexer(treatedData.indexes[key])
+                            })
 
                             // Fill cached database (i.e. all indexes) with data
                             try {
-                                self.db.resetIndexes(treatedData.data);
+                                self._db.resetIndexes(treatedData.data)
                             } catch (e) {
-                                self.db.resetIndexes();   // Rollback any index which didn't fail
-                                return cb(e);
+                                self._db.resetIndexes() // Rollback any index which didn't fail
+                                return cb(e)
                             }
 
-                            self.db.persistence.persistCachedDatabase(cb);
-                        });
-                    });
-                });
-            }
-        ], function (err) {
-            if (err) { return callback(err); }
+                            self._db.persistence.persistCachedDatabase(cb)
+                        })
 
-            self.db.executor.processBuffer();
-            return callback(null);
-        });
-        */
+                        cb(err)
+                    })
+
+                    cb(err)
+                })
+            }
+        ], function(err) {
+            if(err) { return callback(err) }
+
+            self._db.executor.processBuffer()
+
+            return callback(null)
+        })
     }
 }
