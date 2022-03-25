@@ -21,7 +21,7 @@ import { DatastoreOptions } from '../src/models/DataStoreOptions'
 import { Persistence } from "../src/Persistence"
 
 const assert = require('assert')
-const testDb = 'workspace/test.db'
+const testDb = 'test/dataabases/test.db'
 
 describe('Cursor', function () {
     let d: Datastore = null
@@ -32,9 +32,8 @@ describe('Cursor', function () {
 
         d = new Datastore(options)
 
-        // These tests are no longer relevant.  Options are private for now
-        //d.filename.should.equal(testDb);
-        //d.inMemoryOnly.should.equal(false);
+        assert.equal(testDb, d.fileName)
+        assert.equal(false, d.inMemoryOnly)
         /*
         async.waterfall([
             function(cb) {
@@ -95,31 +94,34 @@ describe('Cursor', function () {
                 , function (callback) {
                     var cursor = new Cursor(d, {});
                     cursor.exec(function (err, docs) {
-                        assert.isNull(err);
-                        docs.length.should.equal(5);
-                        _.filter(docs, function (doc) { return doc.age === 5; })[0].age.should.equal(5);
-                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57);
-                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52);
-                        _.filter(docs, function (doc) { return doc.age === 23; })[0].age.should.equal(23);
-                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89);
+                        assert.isNull(err)
+                        assert.equal(5, docs.length)
+                        _.filter(docs, function (doc) { return doc.age === 5; })[0].age.should.equal(5)
+                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57)
+                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52)
+                        _.filter(docs, function (doc) { return doc.age === 23; })[0].age.should.equal(23)
+                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89)
                         callback()
                     });
                 }
                 , function (callback) {
-                    var cursor = new Cursor(d, { age: { $gt: 23 } });
+                    var cursor = new Cursor(d, { age: { $gt: 23 } })
+
                     cursor.exec(function (err, docs) {
-                        assert.isNull(err);
-                        docs.length.should.equal(3);
-                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57);
-                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52);
-                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89);
+                        assert.isNull(err)
+                        assert.equal(3, docs.length)
+
+                        _.filter(docs, function (doc) { return doc.age === 57; })[0].age.should.equal(57)
+                        _.filter(docs, function (doc) { return doc.age === 52; })[0].age.should.equal(52)
+                        _.filter(docs, function (doc) { return doc.age === 89; })[0].age.should.equal(89)
+
                         callback(cursor)
                     });
                 }
             ], function(err, result) {
 
             })
-        });
+        })
 
         /*
         async.waterfall([

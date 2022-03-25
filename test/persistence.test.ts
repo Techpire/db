@@ -27,7 +27,9 @@ import { Persistence } from '../src/Persistence'
 import { Storage } from '../src/Storage'
 import { assert, expect, should } from 'chai'
 
-const testDb = 'workspace/test.db'
+const testDb = 'test/databases/test.db'
+const existingDb = 'test/databases/existing'
+const nonexistingDb = 'test/databases/nonexisting'
 
 describe('Persistence', function () {
     let d: Datastore
@@ -40,16 +42,19 @@ describe('Persistence', function () {
 
         async.waterfall([
             function(cb) {
-                Persistence.ensureDirectoryExists(path.dirname(testDb), function () {
-                    access(testDb, constants.R_OK, (err) => err ? cb(err) : unlink(testDb, cb))
+                Persistence.ensureDirectoryExists(path.dirname(testDb), function() {
+                    access(testDb, constants.R_OK, function(err) {
+                        if(err) { return cb }
+                        else { unlink(testDb, cb) }
+                    })
                 })
             }
             , function(cb) {
-                d.loadDatabase(function (err) {
-                    assert.isNull(null, err)
-
+                d.loadDatabase(function(err) {
+                    assert.isNull(err)
                     assert.equal(0, d.getAllData().length)
-                    return cb()
+
+                    return cb
                 })
             }
         ])
@@ -930,21 +935,21 @@ describe('Persistence', function () {
 
     describe('ensureFileDoesntExist', function() {
         it('Doesnt do anything if file already doesnt exist', function(done) {
-            Storage.ensureFileDoesntExist('workspace/nonexisting', function(err) {
+            Storage.ensureFileDoesntExist(nonexistingDb, function(err) {
                 assert.isNull(err)
-                assert.equal(false, existsSync('workspace/nonexisting'))
+                assert.equal(false, existsSync(nonexistingDb))
             })
 
             done()
         })
 
         it('Deletes file if it exists', function(done) {
-            writeFileSync('workspace/existing', 'hello world', 'utf8')
-            assert.equal(true, existsSync('workspace/existing'))
+            writeFileSync(existingDb, 'hello world', 'utf8')
+            assert.equal(true, existsSync(existingDb))
 
-            Storage.ensureFileDoesntExist('workspace/existing', function(err) {
+            Storage.ensureFileDoesntExist(existingDb, function(err) {
                 assert.isNull(err)
-                assert.equal(false, existsSync('workspace/existing'))
+                assert.equal(false, existsSync(existingDb))
             })
 
             done()
